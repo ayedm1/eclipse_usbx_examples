@@ -1,0 +1,15 @@
+[submodule "threadx"]
+	path = threadx
+	url = https://github.com/eclipse-threadx/threadx.git
+[submodule "filex"]
+	path = filex
+	url = https://github.com/eclipse-threadx/filex.git
+[submodule "netxduo"]
+	path = netxduo
+	url = https://github.com/eclipse-threadx/netxduo.git
+[submodule "eclipse_usbx"]
+	path = eclipse_usbx
+	url = https://github.com/ayedm1/eclipse_usbx.git
+[submodule "supported-platforms"]
+	path = supported-platforms
+	url = https://github.com/eclipse-threadx/supported-platforms.git
