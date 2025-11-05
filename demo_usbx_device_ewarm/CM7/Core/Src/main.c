@@ -17,152 +17,59 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-#include "app_threadx.h"
 #include "main.h"
 #include "gpio.h"
+#include "ux_api.h"
+#ifndef UX_STANDALONE
+#include "tx_api.h"
+#endif /* !UX_STANDALONE */
+//#include "fx_api.h"
+#include "ux_system.h"
+#include "ux_utility.h"
 
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-
-/* USER CODE END Includes */
-
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-
-/* DUAL_CORE_BOOT_SYNC_SEQUENCE: Define for dual core boot synchronization    */
-/*                             demonstration code based on hardware semaphore */
-/* This define is present in both CM7/CM4 projects                            */
-/* To comment when developping/debugging on a single core                     */
-#define DUAL_CORE_BOOT_SYNC_SEQUENCE
-
-#if defined(DUAL_CORE_BOOT_SYNC_SEQUENCE)
-#ifndef HSEM_ID_0
-#define HSEM_ID_0 (0U) /* HW semaphore 0*/
-#endif
-#endif /* DUAL_CORE_BOOT_SYNC_SEQUENCE */
-
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
-
-/* USER CODE BEGIN PV */
-
-/* USER CODE END PV */
-
-/* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MPU_Config(void);
-/* USER CODE BEGIN PFP */
 
-/* USER CODE END PFP */
+#ifdef UX_STANDALONE
+extern VOID ux_application_define(VOID);
+extern VOID ux_demo_device_hid_task(VOID);
+#endif /* !UX_STANDALONE */
 
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
-
-/**
-  * @brief  The application entry point.
-  * @retval int
-  */
 int main(void)
 {
 
-  /* USER CODE BEGIN 1 */
-
-  /* USER CODE END 1 */
-/* USER CODE BEGIN Boot_Mode_Sequence_0 */
-#if defined(DUAL_CORE_BOOT_SYNC_SEQUENCE)
-  int32_t timeout;
-#endif /* DUAL_CORE_BOOT_SYNC_SEQUENCE */
-/* USER CODE END Boot_Mode_Sequence_0 */
-
-  /* MPU Configuration--------------------------------------------------------*/
   MPU_Config();
 
-  /* Enable the CPU Cache */
-
-  /* Enable I-Cache---------------------------------------------------------*/
   SCB_EnableICache();
-
-  /* Enable D-Cache---------------------------------------------------------*/
   SCB_EnableDCache();
 
-/* USER CODE BEGIN Boot_Mode_Sequence_1 */
-#if defined(DUAL_CORE_BOOT_SYNC_SEQUENCE)
-  /* Wait until CPU2 boots and enters in stop mode or timeout*/
-  timeout = 0xFFFF;
-  while((__HAL_RCC_GET_FLAG(RCC_FLAG_D2CKRDY) != RESET) && (timeout-- > 0));
-  if ( timeout < 0 )
-  {
-  Error_Handler();
-  }
-#endif /* DUAL_CORE_BOOT_SYNC_SEQUENCE */
-/* USER CODE END Boot_Mode_Sequence_1 */
-  /* MCU Configuration--------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
-/* USER CODE BEGIN Boot_Mode_Sequence_2 */
-#if defined(DUAL_CORE_BOOT_SYNC_SEQUENCE)
-/* When system initialization is finished, Cortex-M7 will release Cortex-M4 by means of
-HSEM notification */
-/*HW semaphore Clock enable*/
-__HAL_RCC_HSEM_CLK_ENABLE();
-/*Take HSEM */
-HAL_HSEM_FastTake(HSEM_ID_0);
-/*Release HSEM in order to notify the CPU2(CM4)*/
-HAL_HSEM_Release(HSEM_ID_0,0);
-/* wait until CPU2 wakes up from stop mode */
-timeout = 0xFFFF;
-while((__HAL_RCC_GET_FLAG(RCC_FLAG_D2CKRDY) == RESET) && (timeout-- > 0));
-if ( timeout < 0 )
-{
-Error_Handler();
-}
-#endif /* DUAL_CORE_BOOT_SYNC_SEQUENCE */
-/* USER CODE END Boot_Mode_Sequence_2 */
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  /* USER CODE BEGIN 2 */
 
-  /* USER CODE END 2 */
+#ifndef UX_STANDALONE
+  /* Enter the ThreadX kernel.  */
+  tx_kernel_enter();
+#endif /* !UX_STANDALONE */
 
-  MX_ThreadX_Init();
+#ifdef UX_STANDALONE
+  ux_application_define();
 
   /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
+    ux_system_tasks_run();
+#ifdef HID_MOUSE
+    ux_demo_device_hid_task();
+#endif /* HID_MOUSE */
   }
-  /* USER CODE END 3 */
+#endif /* UX_STANDALONE */
 }
 
 /**
@@ -338,3 +245,39 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+
+#if defined(UX_STANDALONE)
+#ifndef TX_API_H
+#include <intrinsics.h>
+void *          _tx_thread_system_stack_ptr; /* For tx_initialize_low_level.s  */
+#endif
+UINT            _tx_thread_interrupt_disable(void);
+void            _tx_thread_interrupt_restore(UINT previous_posture);
+ALIGN_TYPE _ux_utility_interrupt_disable(void)
+{
+#ifdef TX_API_H
+  return _tx_thread_interrupt_disable();
+#else
+  __istate_t interrupt_save;
+  interrupt_save = __get_interrupt_state();
+  __disable_interrupt();
+  return interrupt_save;
+#endif
+}
+void _ux_utility_interrupt_restore(ALIGN_TYPE flags)
+{
+#ifdef TX_API_H
+  _tx_thread_interrupt_restore(flags);
+#else
+  __set_interrupt_state(flags);
+#endif
+}
+/* Time Tick Get for host timing  */
+ULONG _ux_utility_time_get(void)
+{
+#if UX_PERIODIC_RATE != 1000
+#warning UX_PERIODIC_RATE should be 1000 for 1ms tick
+#endif
+  return(HAL_GetTick());
+}
+#endif

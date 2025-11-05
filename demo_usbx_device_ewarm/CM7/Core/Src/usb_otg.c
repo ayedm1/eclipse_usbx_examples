@@ -19,25 +19,29 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "usb_otg.h"
-
+#include "ux_api.h"
+#include "ux_dcd_stm32.h"
 /* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */
 
+#include <string.h>
+/* Set hpcd_USB_OTG_HS at the end of non-cacheable
+   Memory address ".UsbHpcdSection". */
+#if defined ( __ICCARM__ ) /* IAR Compiler */
+#pragma location = ".UsbHpcdSection"
+#elif defined ( __CC_ARM ) || defined(__ARMCC_VERSION) /* ARM Compiler 5/6 */
+__attribute__((section(".UsbHpcdSection")))
+#elif defined ( __GNUC__ ) /* GNU Compiler */
+__attribute__((section(".UsbHpcdSection")))
+#endif
 PCD_HandleTypeDef hpcd_USB_OTG_HS;
 
 /* USB_OTG_HS init function */
 
-void MX_USB_OTG_HS_PCD_Init(void)
+void usb_device_dcd_initialize(void)
 {
 
-  /* USER CODE BEGIN USB_OTG_HS_Init 0 */
-
-  /* USER CODE END USB_OTG_HS_Init 0 */
-
-  /* USER CODE BEGIN USB_OTG_HS_Init 1 */
-
-  /* USER CODE END USB_OTG_HS_Init 1 */
   hpcd_USB_OTG_HS.Instance = USB_OTG_HS;
   hpcd_USB_OTG_HS.Init.dev_endpoints = 9;
   hpcd_USB_OTG_HS.Init.speed = PCD_SPEED_HIGH;
@@ -53,9 +57,16 @@ void MX_USB_OTG_HS_PCD_Init(void)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN USB_OTG_HS_Init 2 */
 
-  /* USER CODE END USB_OTG_HS_Init 2 */
+#ifdef HID_MOUSE
+  HAL_PCDEx_SetRxFiFo(&hpcd_USB_OTG_HS, 0x200);
+  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 0, 0x80); /* EP00 - 16 * 4 = 64  */
+  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 1, 0x100); /* EP81 - 128 * 4 = 512  */
+#endif /* HID_MOUSE */
+
+  ux_dcd_stm32_initialize((ULONG)USB_OTG_HS, (ULONG)&hpcd_USB_OTG_HS);
+
+  HAL_PCD_Start(&hpcd_USB_OTG_HS);
 
 }
 

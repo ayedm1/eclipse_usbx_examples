@@ -12,6 +12,19 @@
 /**************************************************************************/
 /**************************************************************************/
 /**                                                                       */
+/** Overview                                                              */
+/**                                                                       */
+/**  This example works as a USB HID device. It will appear as a USB      */
+/**  mouse device on PC. This application demo is running in standalone   */
+/**  mode.                                                                */
+/**                                                                       */
+/** Note                                                                  */
+/**                                                                       */
+/**  This demonstration is not optimized, to optimize application user    */
+/**  sould configuer related class flag in ux_user.h and adjust           */
+/**  DEMO_STACK_SIZE and UX_DEVICE_MEMORY_STACK_SIZE                      */
+/**                                                                       */
+/**                                                                       */
 /**  AUTHOR                                                               */
 /**                                                                       */
 /**   Mohamed AYED                                                        */
@@ -19,18 +32,21 @@
 /**************************************************************************/
 /**************************************************************************/
 
-#include "tx_api.h"
 #include "ux_api.h"
 #include "ux_device_class_hid.h"
 
+/* if defined mouse with absolute positioning is a type of USB HID mouse that reports its position using
+   absolute coordinates rather than relative movement deltas. This is common in touch devices, graphics tablets,
+   and some remote control devices, where the report indicates an (X, Y) position within a defined logical range,
+   not just movement increments.*/
+/* #define UX_DEMO_MOUSE_ABSOLUTE */
 
-//#define UX_DEMO_MOUSE_ABSOLUTE
+/* Defined the mouse will act as boot device. */
 #define DEMO_HID_BOOT_DEVICE
 
 /**************************************************/
 /**  Define constants                             */
 /**************************************************/
-#define DEMO_STACK_SIZE                 4*1024
 #define UX_DEVICE_MEMORY_STACK_SIZE     7*1024
 
 #define UX_DEMO_HID_DEVICE_VID          0x090A
@@ -51,8 +67,12 @@
 #define UX_DEMO_HID_SUBCLASS            0x00
 #endif
 
-#define UX_DEMO_HID_MOUSE_CURSOR_MOVE   3
-#define UX_DEMO_HID_MOUSE_CURSOR_MOVE_N 100
+#ifdef UX_DEMO_MOUSE_ABSOLUTE
+#define UX_DEMO_HID_MOUSE_CURSOR_MOVE           350
+#else /* UX_DEMO_MOUSE_ABSOLUTE */
+#define UX_DEMO_HID_MOUSE_CURSOR_MOVE           3
+#define UX_DEMO_HID_MOUSE_CURSOR_MOVE_N         100
+#endif /* UX_DEMO_MOUSE_ABSOLUTE */
 
 #define UX_MOUSE_CURSOR_MOVE_RIGHT      0x00
 #define UX_MOUSE_CURSOR_MOVE_DOWN       0x01
@@ -80,8 +100,22 @@ VOID ux_demo_device_hid_thread_entry(ULONG thread_input);
 /**************************************************/
 /**  usbx device hid demo mouse                   */
 /**************************************************/
+UINT ux_demo_hid_mouse_buttons(UX_SLAVE_CLASS_HID *device_hid);
+UINT ux_demo_hid_mouse_scroll_wheel(UX_SLAVE_CLASS_HID *device_hid);
+#ifndef UX_DEMO_MOUSE_ABSOLUTE
 UINT ux_demo_hid_mouse_cursor_move(UX_SLAVE_CLASS_HID *device_hid);
+#else
+UINT ux_demo_hid_mouse_absolute_cursor_move(UX_SLAVE_CLASS_HID *device_hid);
+#endif /* UX_DEMO_MOUSE_ABSOLUTE */
+
+/**************************************************/
+/**  usbx callback error                          */
+/**************************************************/
 VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code);
+
+#ifndef EXTERNAL_MAIN
+extern int board_setup(void);
+#endif /* EXTERNAL_MAIN */
 extern int usb_device_dcd_initialize(void *param);
 
 /**************************************************/
@@ -89,10 +123,9 @@ extern int usb_device_dcd_initialize(void *param);
 /**************************************************/
 UX_SLAVE_CLASS_HID *hid_mouse;
 
-/**************************************************/
-/**  thread object                                */
-/**************************************************/
-static TX_THREAD ux_hid_thread;
+VOID ux_application_define(VOID);
+VOID ux_demo_device_hid_task(VOID);
+static CHAR ux_system_memory_pool[UX_DEVICE_MEMORY_STACK_SIZE];
 
 /**************************************************/
 /**  HID Report descriptor                        */
@@ -352,23 +385,28 @@ int main(void)
     /* Initialize the board.  */
     board_setup();
 
-    /* Enter the ThreadX kernel.  */
-    tx_kernel_enter();
-}
-#endif
 
-VOID tx_application_define(VOID *first_unused_memory)
+    ux_application_define();
+
+        while (1)
+    {
+        ux_system_tasks_run();
+        ux_demo_device_hid_task();
+    }
+
+}
+#endif /* EXTERNAL_MAIN */
+
+
+VOID ux_application_define(VOID)
 {
-CHAR                            *stack_pointer;
 CHAR                            *memory_pointer;
 UINT                            status;
 UX_SLAVE_CLASS_HID_PARAMETER    hid_mouse_parameter;
 
-    /* Initialize the free memory pointer.  */
-    stack_pointer =  (CHAR *) first_unused_memory;
 
-    /* Initialize the RAM disk memory. */
-    memory_pointer =  stack_pointer +  DEMO_STACK_SIZE;
+    /* Use static memory block.  */
+    memory_pointer = ux_system_memory_pool;
 
     /* Initialize USBX Memory */
     status = ux_system_initialize(memory_pointer, UX_DEVICE_MEMORY_STACK_SIZE, UX_NULL, 0);
@@ -402,16 +440,12 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_mouse_parameter;
     if(status != UX_SUCCESS)
         return;
 
-    /* Create the main demo thread.  */
-    status = ux_utility_thread_create(&ux_hid_thread, "hid_usbx_app_thread_entry",
-                                      ux_demo_device_hid_thread_entry, 0, stack_pointer,
-                                      512, 20, 20, 1, TX_AUTO_START);
-
-    if(status != UX_SUCCESS)
-        return;
-
-    /* error callback */
+    /* Register error callback. */
     ux_utility_error_callback_register(ux_demo_error_callback);
+
+
+    /* Register the USB device controllers available in this system.  */
+    usb_device_dcd_initialize(UX_NULL);
 }
 
 /********************************************************************/
@@ -455,31 +489,23 @@ UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_
 }
 
 /********************************************************************/
-/**  ux_demo_device_hid_thread_entry: hid demo thread               */
+/**  ux_demo_device_hid_task: hid demo task                         */
 /********************************************************************/
-VOID ux_demo_device_hid_thread_entry(ULONG thread_input)
+VOID ux_demo_device_hid_task(VOID)
 {
 
-    UX_PARAMETER_NOT_USED(thread_input);
-
-    /* Register the USB device controllers available in this system */
-    usb_device_dcd_initialize(UX_NULL);
-
-    while (1)
-    {
-      /* Check if the device state already configured.  */
-      if ((UX_SLAVE_DEVICE_CHECK_STATE(UX_DEVICE_CONFIGURED)) && (hid_mouse != UX_NULL))
-      {
-        ux_demo_hid_mouse_cursor_move(hid_mouse);
-      }
-      else
-      {
-        /* Sleep thread for 10ms.  */
-        ux_utility_delay_ms(MS_TO_TICK(10));
-      }
-    }
+  /* Check if the device state already configured.  */
+  if ((UX_SLAVE_DEVICE_CHECK_STATE(UX_DEVICE_CONFIGURED)) && (hid_mouse != UX_NULL))
+  {
+#ifdef UX_DEMO_MOUSE_ABSOLUTE
+    ux_demo_hid_mouse_absolute_cursor_move(hid_mouse);
+#else /* UX_DEMO_MOUSE_ABSOLUTE */
+    ux_demo_hid_mouse_cursor_move(hid_mouse);
+#endif /* UX_DEMO_MOUSE_ABSOLUTE */
+  }
 }
 
+#ifndef UX_DEMO_MOUSE_ABSOLUTE
 /********************************************************************/
 /**  ux_demo_hid_mouse_cursor_move: show how to move mouse cursor   */
 /********************************************************************/
@@ -498,22 +524,11 @@ static UCHAR                mouse_move_count;
     /* Initialize mouse event.  */
     device_hid_event.ux_device_class_hid_event_report_id = 0;
     device_hid_event.ux_device_class_hid_event_report_type = UX_DEVICE_CLASS_HID_REPORT_TYPE_INPUT;
-#ifndef UX_DEMO_MOUSE_ABSOLUTE
     device_hid_event.ux_device_class_hid_event_length = 4;
-    device_hid_event.ux_device_class_hid_event_buffer[0] = 0;           /* R|M|L  */
-    device_hid_event.ux_device_class_hid_event_buffer[1] = mouse_x;     /* X      */
-    device_hid_event.ux_device_class_hid_event_buffer[2] = mouse_y;     /* Y      */
-    device_hid_event.ux_device_class_hid_event_buffer[3] = 0;           /* Wheel  */
-#else /* UX_DEMO_MOUSE_ABSOLUTE */
-    device_hid_event.ux_device_class_hid_event_length = 6;
-    device_hid_event.ux_device_class_hid_event_buffer[0] = 0;               /* M|R|L    */
-    device_hid_event.ux_device_class_hid_event_buffer[1] = UX_W0(mouse_x);  /* X        */
-    device_hid_event.ux_device_class_hid_event_buffer[2] = UX_W1(mouse_x);  /* X        */
-    device_hid_event.ux_device_class_hid_event_buffer[3] = UX_W0(mouse_y);  /* Y        */
-    device_hid_event.ux_device_class_hid_event_buffer[4] = UX_W1(mouse_y);  /* Y        */
-    device_hid_event.ux_device_class_hid_event_buffer[5] = 0;               /* Wheel    */
-#endif /* UX_DEMO_MOUSE_ABSOLUTE */
-
+    device_hid_event.ux_device_class_hid_event_buffer[0] = 0;           /* ...R|M|L  */
+    device_hid_event.ux_device_class_hid_event_buffer[1] = mouse_x;     /* X         */
+    device_hid_event.ux_device_class_hid_event_buffer[2] = mouse_y;     /* Y         */
+    device_hid_event.ux_device_class_hid_event_buffer[3] = 0;           /* Wheel     */
 
     /* Move cursor.  */
     switch(mouse_move_dir)
@@ -591,6 +606,107 @@ static UCHAR                mouse_move_count;
 
     return mouse_move_dir;
 }
+#else /* UX_DEMO_MOUSE_ABSOLUTE */
+/***************************************************************************************/
+/**  ux_demo_hid_mouse_absolute_cursor_move:                                           */
+/**       show how to daw a rectangle with  width 10000, height 10000, step size 500   */
+/***************************************************************************************/
+UINT ux_demo_hid_mouse_absolute_cursor_move(UX_SLAVE_CLASS_HID *device_hid)
+{
+UINT                        status;
+UX_SLAVE_CLASS_HID_EVENT    device_hid_event;
+ULONG                       start_mouse_x = 8000;
+ULONG                       start_mouse_y = 8000;
+ULONG                       width = 10000;
+ULONG                       height = 10000;
+static ULONG                mouse_x;
+static ULONG                mouse_y;
+static UCHAR                mouse_move_dir;
+
+    /* Sleep thread for 10ms.  */
+    ux_utility_delay_ms(MS_TO_TICK(100));
+
+    /* Initialize mouse event.  */
+    device_hid_event.ux_device_class_hid_event_report_id = 0;
+    device_hid_event.ux_device_class_hid_event_report_type = UX_DEVICE_CLASS_HID_REPORT_TYPE_INPUT;
+    device_hid_event.ux_device_class_hid_event_length = 6;
+    device_hid_event.ux_device_class_hid_event_buffer[0] = 0;               /* ...M|R|L  */
+    device_hid_event.ux_device_class_hid_event_buffer[1] = UX_W0(mouse_x);  /* X         */
+    device_hid_event.ux_device_class_hid_event_buffer[2] = UX_W1(mouse_x);  /* X         */
+    device_hid_event.ux_device_class_hid_event_buffer[3] = UX_W0(mouse_y);  /* Y         */
+    device_hid_event.ux_device_class_hid_event_buffer[4] = UX_W1(mouse_y);  /* Y         */
+    device_hid_event.ux_device_class_hid_event_buffer[5] = 0;               /* Wheel     */
+
+
+    switch (mouse_move_dir)
+    {
+    case UX_MOUSE_CURSOR_MOVE_RIGHT:   /* +x.  */
+
+        mouse_x += UX_DEMO_HID_MOUSE_CURSOR_MOVE;
+
+        if (mouse_x >= start_mouse_x + width)
+        {
+            mouse_x = start_mouse_x + width;
+            mouse_move_dir = UX_MOUSE_CURSOR_MOVE_DOWN;
+        }
+
+        break;
+
+    case UX_MOUSE_CURSOR_MOVE_DOWN:  /* +y.  */
+
+        mouse_y += UX_DEMO_HID_MOUSE_CURSOR_MOVE;
+
+        if (mouse_y >= start_mouse_y + height)
+        {
+            mouse_y = start_mouse_y + height;
+            mouse_move_dir = UX_MOUSE_CURSOR_MOVE_LEFT;
+        }
+
+        break;
+
+    case UX_MOUSE_CURSOR_MOVE_LEFT:  /* -y. */
+
+        mouse_x -= UX_DEMO_HID_MOUSE_CURSOR_MOVE;
+
+        if (mouse_x <= start_mouse_x)
+        {
+            mouse_x = start_mouse_x;
+            mouse_move_dir = UX_MOUSE_CURSOR_MOVE_UP;
+        }
+
+        break;
+
+    case UX_MOUSE_CURSOR_MOVE_UP:  /* -y. */
+
+        mouse_y -= UX_DEMO_HID_MOUSE_CURSOR_MOVE;
+
+        if (mouse_y <= start_mouse_y)
+        {
+            mouse_y = start_mouse_y;
+            mouse_move_dir = UX_MOUSE_CURSOR_MOVE_RIGHT;
+        }
+
+        break;
+
+    default:
+
+        mouse_x = 0;
+        mouse_y = 0;
+
+        ux_utility_memory_set(&device_hid_event, 0, sizeof(UX_SLAVE_CLASS_HID_EVENT));
+
+        break;
+    }
+
+    /* Set the mouse event.  */
+    status = ux_device_class_hid_event_set(device_hid, &device_hid_event);
+
+    if(status != UX_SUCCESS)
+        return UX_ERROR;
+
+    return mouse_move_dir;
+}
+#endif /* UX_DEMO_MOUSE_ABSOLUTE */
 
 VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code)
 {

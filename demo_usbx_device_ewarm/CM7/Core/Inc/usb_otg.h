@@ -38,7 +38,7 @@ extern PCD_HandleTypeDef hpcd_USB_OTG_HS;
 
 /* USER CODE END Private defines */
 
-void MX_USB_OTG_HS_PCD_Init(void);
+void usb_device_dcd_initialize(void);
 
 /* USER CODE BEGIN Prototypes */
 
