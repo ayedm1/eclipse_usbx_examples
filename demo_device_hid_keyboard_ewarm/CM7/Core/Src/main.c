@@ -27,6 +27,7 @@
 #include "ux_system.h"
 #include "ux_utility.h"
 
+<<<<<<<< HEAD:demo_device_hid_keyboard_ewarm/CM7/Core/Src/main.c
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -65,10 +66,20 @@ static void MPU_Config(void);
 //extern VOID ux_application_define(VOID);
 //extern VOID ux_demo_device_hid_task(VOID);
 //#endif /* !UX_STANDALONE */
+========
+void SystemClock_Config(void);
+static void MPU_Config(void);
+
+#ifdef UX_STANDALONE
+extern VOID ux_application_define(VOID);
+extern VOID ux_demo_device_hid_task(VOID);
+#endif /* !UX_STANDALONE */
+>>>>>>>> main:demo_usbx_device_ewarm/CM7/Core/Src/main.c
 
 int main(void)
 {
 
+<<<<<<<< HEAD:demo_device_hid_keyboard_ewarm/CM7/Core/Src/main.c
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -77,16 +88,14 @@ int main(void)
 /* USER CODE END Boot_Mode_Sequence_0 */
 
   /* MPU Configuration--------------------------------------------------------*/
+========
+>>>>>>>> main:demo_usbx_device_ewarm/CM7/Core/Src/main.c
   MPU_Config();
 
-  /* Enable the CPU Cache */
-
-  /* Enable I-Cache---------------------------------------------------------*/
   SCB_EnableICache();
-
-  /* Enable D-Cache---------------------------------------------------------*/
   SCB_EnableDCache();
 
+<<<<<<<< HEAD:demo_device_hid_keyboard_ewarm/CM7/Core/Src/main.c
 /* USER CODE BEGIN Boot_Mode_Sequence_1 */
   /* Wait until CPU2 boots and enters in stop mode or timeout*/
   timeout = 0xFFFF;
@@ -99,10 +108,13 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+========
+>>>>>>>> main:demo_usbx_device_ewarm/CM7/Core/Src/main.c
   HAL_Init();
 
   /* Configure the system clock */
   SystemClock_Config();
+<<<<<<<< HEAD:demo_device_hid_keyboard_ewarm/CM7/Core/Src/main.c
   /* USER CODE BEGIN Boot_Mode_Sequence_2 */
   /* When system initialization is finished, Cortex-M7 will release Cortex-M4 by means of
   HSEM notification */
@@ -124,6 +136,8 @@ int main(void)
   /* USER CODE BEGIN SysInit */
 
   /* USER CODE END SysInit */
+========
+>>>>>>>> main:demo_usbx_device_ewarm/CM7/Core/Src/main.c
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
@@ -133,6 +147,7 @@ int main(void)
   tx_kernel_enter();
 #endif /* !UX_STANDALONE */
 
+<<<<<<<< HEAD:demo_device_hid_keyboard_ewarm/CM7/Core/Src/main.c
 //#ifdef UX_STANDALONE
 //  ux_application_define();
 //
@@ -147,6 +162,22 @@ int main(void)
 //#endif /* HID_MOUSE */
 //  }
 //#endif /* UX_STANDALONE */
+========
+#ifdef UX_STANDALONE
+  ux_application_define();
+
+  /* We should never get here as control is now taken by the scheduler */
+
+  /* Infinite loop */
+  while (1)
+  {
+    ux_system_tasks_run();
+#ifdef HID_MOUSE
+    ux_demo_device_hid_task();
+#endif /* HID_MOUSE */
+  }
+#endif /* UX_STANDALONE */
+>>>>>>>> main:demo_usbx_device_ewarm/CM7/Core/Src/main.c
 }
 
 /**
