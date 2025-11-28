@@ -64,6 +64,12 @@ void usb_device_dcd_initialize(void)
   HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 1, 0x100); /* EP81 - 128 * 4 = 512  */
 #endif /* HID_MOUSE */
 
+#ifdef HID_KEYBOARD
+  HAL_PCDEx_SetRxFiFo(&hpcd_USB_OTG_HS, 0x200);
+  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 0, 0x80); /* EP00 - 16 * 4 = 64  */
+  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 1, 0x100); /* EP81 - 128 * 4 = 512  */
+#endif /* HID_KEYBOARD */
+
   ux_dcd_stm32_initialize((ULONG)USB_OTG_HS, (ULONG)&hpcd_USB_OTG_HS);
 
   HAL_PCD_Start(&hpcd_USB_OTG_HS);
