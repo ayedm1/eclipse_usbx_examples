@@ -93,7 +93,7 @@ static void demo_delay_with_tasks_running(ULONG ms_wait);
 #ifndef EXTERNAL_MAIN
 extern int board_setup(void);
 #endif /* EXTERNAL_MAIN */
-extern int usb_device_dcd_initialize(void);
+extern int usb_device_dcd_initialize(void *param);
 
 /**************************************************/
 /**  HID Report descriptor                        */
@@ -397,7 +397,7 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_keyboard_parameter;
     ux_utility_error_callback_register(ux_demo_error_callback);
 
     /* Register the USB device controllers available in this system.  */
-    usb_device_dcd_initialize();
+    usb_device_dcd_initialize(UX_NULL);
 }
 
 /********************************************************************/

@@ -99,7 +99,7 @@ static VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT 
 #ifndef EXTERNAL_MAIN
 extern int board_setup(void);
 #endif /* EXTERNAL_MAIN */
-extern int usb_device_dcd_initialize(void);
+extern int usb_device_dcd_initialize(void *param);
 
 /**************************************************/
 /**  HID Report descriptor                        */
@@ -479,7 +479,8 @@ UX_SLAVE_CLASS_HID_EVENT device_hid_event;
 
     UX_PARAMETER_NOT_USED(thread_input);
 
-    usb_device_dcd_initialize();
+    /* Register the USB device controllers available in this system.  */
+    usb_device_dcd_initialize(UX_NULL);
 
     /* Set the first key to 'a' which is 04.  */
     key = 0x04;
