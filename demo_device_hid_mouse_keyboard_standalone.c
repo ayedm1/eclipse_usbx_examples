@@ -12,6 +12,20 @@
 /**************************************************************************/
 /**************************************************************************/
 /**                                                                       */
+/** Overview                                                              */
+/**                                                                       */
+/**  This example works as a USB HID device. It will appear as a USB      */
+/**  mouse and keyboard device on PC in the same time. This application   */
+/**  demo is running in standalone mode.                                  */
+/**  This example use HID multiple report id.                             */
+/**                                                                       */
+/** Note                                                                  */
+/**                                                                       */
+/**  This demonstration is not optimized, to optimize application user    */
+/**  sould configuer related class flag in ux_user.h and adjust           */
+/**  DEMO_STACK_SIZE and UX_DEVICE_MEMORY_STACK_SIZE                      */
+/**                                                                       */
+/**                                                                       */
 /**  AUTHOR                                                               */
 /**                                                                       */
 /**   Mohamed AYED                                                        */
@@ -84,15 +98,7 @@ VOID ux_demo_device_hid_instance_deactivate(VOID *hid_instance);
 UINT ux_demo_device_hid_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_CLASS_HID_EVENT *hid_event);
 UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_CLASS_HID_EVENT *hid_event);
 
-/**************************************************/
-/**  usbx device hid demo thread                  */
-/**************************************************/
-VOID ux_demo_device_hid_thread_entry(ULONG thread_input);
-
-/**************************************************/
-/**  usbx application initialization with RTOS    */
-/**************************************************/
-VOID tx_application_define(VOID *first_unused_memory);
+VOID ux_application_define(VOID);
 
 /**************************************************/
 /**  usbx device hid demo mouse                   */
@@ -105,16 +111,18 @@ UINT ux_demo_hid_keyboard_send_character(UX_SLAVE_CLASS_HID *device_hid);
 /**************************************************/
 UX_SLAVE_CLASS_HID *hid;
 
+VOID ux_application_define(VOID);
+VOID ux_demo_device_hid_task(VOID);
+static CHAR ux_system_memory_pool[UX_DEVICE_MEMORY_STACK_SIZE];
+
 /**************************************************/
 /**  usbx device hid keyboard                     */
 /**************************************************/
 ULONG num_lock_flag  = UX_FALSE;
 ULONG caps_lock_flag = UX_FALSE;
 
-/**************************************************/
-/**  usbx callback error                          */
-/**************************************************/
-VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code);
+static VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code);
+static void demo_delay_with_tasks_running(ULONG ms_wait);
 
 UCHAR hid_report[] = {
     // Report ID 1: Keyboard
@@ -375,23 +383,24 @@ int main(void)
     /* Initialize the board.  */
     board_setup();
 
-    /* Enter the ThreadX kernel.  */
-    tx_kernel_enter();
+    ux_application_define();
+
+    while (1)
+    {
+        ux_system_tasks_run();
+        ux_demo_device_hid_task();
+    }
 }
 #endif /* EXTERNAL_MAIN */
 
-VOID tx_application_define(VOID *first_unused_memory)
+VOID ux_application_define(VOID)
 {
-CHAR                            *stack_pointer;
 CHAR                            *memory_pointer;
 UINT                            status;
 UX_SLAVE_CLASS_HID_PARAMETER    hid_parameter;
 
-    /* Initialize the free memory pointer.  */
-    stack_pointer =  (CHAR *) first_unused_memory;
-
-    /* Initialize the RAM disk memory. */
-    memory_pointer =  stack_pointer +  DEMO_STACK_SIZE;
+    /* Use static memory block.  */
+    memory_pointer = ux_system_memory_pool;
 
     /* Initialize USBX Memory */
     status = ux_system_initialize(memory_pointer, UX_DEVICE_MEMORY_STACK_SIZE, UX_NULL, 0);
@@ -428,6 +437,9 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_parameter;
 
     /* Register error callback */
     ux_utility_error_callback_register(ux_demo_error_callback);
+
+    /* Register the USB device controllers available in this system.  */
+    usb_device_dcd_initialize(UX_NULL);
 }
 
 /********************************************************************/
@@ -489,62 +501,48 @@ UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_
 }
 
 /********************************************************************/
-/**  ux_demo_device_hid_thread_entry: hid demo thread               */
+/**  ux_demo_device_hid_task: hid demo task                         */
 /********************************************************************/
-VOID ux_demo_device_hid_thread_entry(ULONG thread_input)
+VOID ux_demo_device_hid_task(VOID)
 {
 UINT            status;
-UINT            demo_state;
+static UINT     demo_state = UX_DEMO_MOUSE;
 
-    UX_PARAMETER_NOT_USED(thread_input);
-
-    /* Register the USB device controllers available in this system */
-    usb_device_dcd_initialize(UX_NULL);
-
-
-    while (1)
+    /* Check if the device state already configured.  */
+    if ((UX_SLAVE_DEVICE_CHECK_STATE(UX_DEVICE_CONFIGURED)) && (hid != UX_NULL))
     {
-      /* Check if the device state already configured.  */
-      if ((UX_SLAVE_DEVICE_CHECK_STATE(UX_DEVICE_CONFIGURED)) && (hid != UX_NULL))
-      {
 
-          switch(demo_state)
-          {
+        switch(demo_state)
+        {
 
-          case UX_DEMO_MOUSE:
+        case UX_DEMO_MOUSE:
 
-            /* Move cursor */
-            status = ux_demo_hid_mouse_cursor_move(hid);
+          /* Move cursor */
+          status = ux_demo_hid_mouse_cursor_move(hid);
 
-            if (status == UX_MOUSE_CURSOR_MOVE_DONE)
-              demo_state = UX_DEMO_KEYBOARD;
+          if (status == UX_MOUSE_CURSOR_MOVE_DONE)
+            demo_state = UX_DEMO_KEYBOARD;
 
-            break;
+          break;
 
 
-          case UX_DEMO_KEYBOARD:
+        case UX_DEMO_KEYBOARD:
 
-            /* keyboard send lowercase character */
-            status = ux_demo_hid_keyboard_send_character(hid);
+          /* keyboard send lowercase character */
+          status = ux_demo_hid_keyboard_send_character(hid);
 
-            if (status == UX_KEYBOARD_DONE)
-              demo_state = UX_DEMO_END;
+          if (status == UX_KEYBOARD_DONE)
+            demo_state = UX_DEMO_END;
 
-            break;
+          break;
 
 
-          default:
+        default:
 
-            ux_utility_delay_ms(MS_TO_TICK(10));
+          ux_utility_delay_ms(MS_TO_TICK(10));
 
-            break;
-          }
-      }
-      else
-      {
-        /* Sleep thread for 10ms.  */
-        ux_utility_delay_ms(MS_TO_TICK(10));
-      }
+          break;
+        }
     }
 }
 
@@ -560,8 +558,8 @@ static UCHAR                mouse_y;
 static UCHAR                mouse_move_dir;
 static UCHAR                mouse_move_count;
 
-    /* Sleep thread for 10ms.  */
-    ux_utility_delay_ms(MS_TO_TICK(10));
+    /* delay for 20ms.  */
+    demo_delay_with_tasks_running(MS_TO_TICK(10));
 
     /* Initialize mouse event.  */
     device_hid_event.ux_device_class_hid_event_report_id = HID_REPORT_ID_MOUSE;
@@ -666,8 +664,8 @@ UX_SLAVE_CLASS_HID_EVENT device_hid_event;
 
     if (key != 0)
     {
-        /* Sleep thread for 20ms.  */
-        ux_utility_delay_ms(MS_TO_TICK(20));
+        /* delay for 20ms.  */
+        demo_delay_with_tasks_running(MS_TO_TICK(20));
 
         /* Then insert a key into the keyboard event.  Length is fixed to 8.  */
         device_hid_event.ux_device_class_hid_event_report_id = HID_REPORT_ID_KEYBOARD;
@@ -717,6 +715,24 @@ UX_SLAVE_CLASS_HID_EVENT device_hid_event;
 
     return status;
 }
+
+/********************************************************************/
+/**  demo_delay_with_tasks_running: delay with tasks               */
+/********************************************************************/
+static void demo_delay_with_tasks_running(ULONG ms_wait)
+{
+ULONG ticks;
+
+    /* Get current time.  */
+    ticks = ux_utility_time_get();
+
+    /* Wait until timeout.  */
+    while(ux_utility_time_elapsed(ticks, ux_utility_time_get()) < UX_MS_TO_TICK_NON_ZERO(ms_wait))
+    {
+        ux_system_tasks_run();
+    }
+}
+
 
 VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code)
 {

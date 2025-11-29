@@ -5698,11 +5698,11 @@
                     <state>USE_HAL_DRIVER</state>
                     <state>STM32H747xx</state>
                     <state>USE_PWR_DIRECT_SMPS_SUPPLY</state>
-                    <state>UX_INCLUDE_USER_DEFINE_FILE</state>
                     <state>EXTERNAL_MAIN</state>
                     <state>UX_STANDALONE</state>
                     <state>UX_PERIODIC_RATE=1000</state>
                     <state>HID_MOUSE</state>
+                    <state>UX_DEVICE_CLASS_HID_EVENT_BUFFER_LENGTH=9</state>
                 </option>
                 <option>
                     <name>CCPreprocFile</name>
