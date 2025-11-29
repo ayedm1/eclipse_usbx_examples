@@ -65,7 +65,7 @@ int main(void)
   while (1)
   {
     ux_system_tasks_run();
-#if (defined HID_MOUSE) || (defined HID_KEYBOARD)
+#if (defined HID_MOUSE) || (defined HID_KEYBOARD) || (defined HID_CONSUMER)
     ux_demo_device_hid_task();
 #endif /* HID_MOUSE */
   }
