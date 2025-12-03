@@ -19,7 +19,6 @@
 /**************************************************************************/
 /**************************************************************************/
 
-#include "tx_api.h"
 #include "ux_api.h"
 #include "ux_device_class_hid.h"
 
@@ -92,10 +91,6 @@ UINT ux_demo_hid_consumer_brightness_control(UX_SLAVE_CLASS_HID *device_hid);
 /**************************************************/
 UX_SLAVE_CLASS_HID *hid_consumer;
 
-/**************************************************/
-/**  thread object                                */
-/**************************************************/
-static TX_THREAD ux_hid_thread;
 
 static VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code);
 
@@ -103,6 +98,11 @@ static VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT 
 extern int board_setup(void);
 #endif /* EXTERNAL_MAIN */
 extern int usb_device_dcd_initialize(void *param);
+
+
+VOID ux_application_define(VOID);
+VOID ux_demo_device_hid_task(VOID);
+static CHAR ux_system_memory_pool[UX_DEVICE_MEMORY_STACK_SIZE];
 
 /**************************************************/
 /**  HID Report descriptor                        */
@@ -325,28 +325,31 @@ UCHAR ux_demo_language_id_framework[] = {
 };
 
 #ifndef EXTERNAL_MAIN
-int main(void)
 {
     /* Initialize the board.  */
     board_setup();
 
-    /* Enter the ThreadX kernel.  */
-    tx_kernel_enter();
+
+    ux_application_define();
+
+        while (1)
+    {
+        ux_system_tasks_run();
+        ux_demo_device_hid_task();
+    }
+
 }
 #endif /* EXTERNAL_MAIN */
 
-VOID tx_application_define(VOID *first_unused_memory)
+VOID ux_application_define(VOID)
 {
-CHAR                            *stack_pointer;
 CHAR                            *memory_pointer;
 UINT                            status;
 UX_SLAVE_CLASS_HID_PARAMETER    hid_consumer_parameter;
 
-    /* Initialize the free memory pointer.  */
-    stack_pointer =  (CHAR *) first_unused_memory;
 
-    /* Initialize the RAM disk memory. */
-    memory_pointer =  stack_pointer +  DEMO_STACK_SIZE;
+    /* Use static memory block.  */
+    memory_pointer = ux_system_memory_pool;
 
     /* Initialize USBX Memory */
     status = ux_system_initialize(memory_pointer, UX_DEVICE_MEMORY_STACK_SIZE, UX_NULL, 0);
@@ -380,16 +383,11 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_consumer_parameter;
     if(status != UX_SUCCESS)
         return;
 
-    /* Create the main demo thread.  */
-    status = ux_utility_thread_create(&ux_hid_thread, "hid_usbx_app_thread_entry",
-                                      ux_demo_device_hid_thread_entry, 0, stack_pointer,
-                                      512, 20, 20, 1, TX_AUTO_START);
-
-    if(status != UX_SUCCESS)
-        return;
-
     /* Register error callback.  */
     ux_utility_error_callback_register(ux_demo_error_callback);
+
+    /* Register the USB device controllers available in this system.  */
+    usb_device_dcd_initialize(UX_NULL);
 }
 
 /********************************************************************/
@@ -433,57 +431,45 @@ UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_
 }
 
 /********************************************************************/
-/**  ux_demo_device_hid_thread_entry: hid demo thread               */
+/**  ux_demo_device_hid_task: hid demo task                         */
 /********************************************************************/
-VOID ux_demo_device_hid_thread_entry(ULONG thread_input)
+VOID ux_demo_device_hid_task(VOID)
 {
 UINT            status;
 UINT            demo_state = 0;
 
-    UX_PARAMETER_NOT_USED(thread_input);
 
-    /* Register the USB device controllers available in this system.  */
-    usb_device_dcd_initialize(UX_NULL);
-
-    while (1)
+    /* Check if the device state already configured.  */
+    if ((UX_SLAVE_DEVICE_CHECK_STATE(UX_DEVICE_CONFIGURED)) && (hid_consumer != UX_NULL))
     {
-      /* Check if the device state already configured.  */
-      if ((UX_SLAVE_DEVICE_CHECK_STATE(UX_DEVICE_CONFIGURED)) && (hid_consumer != UX_NULL))
+      switch(demo_state)
       {
-        switch(demo_state)
-        {
 
-        case UX_CONSUMER_MEDIA:
+      case UX_CONSUMER_MEDIA:
 
-          /* Control media.  */
-          status = ux_demo_hid_consumer_media_control(hid_consumer);
+        /* Control media.  */
+        status = ux_demo_hid_consumer_media_control(hid_consumer);
 
-          if (status == UX_CONSUMER_MEDIA_DONE)
-              demo_state = UX_CONSUMER_BRIGHTNESS;
+        if (status == UX_CONSUMER_MEDIA_DONE)
+            demo_state = UX_CONSUMER_BRIGHTNESS;
 
-          break;
+        break;
 
-        case UX_CONSUMER_BRIGHTNESS:
+      case UX_CONSUMER_BRIGHTNESS:
 
-          /* Control brightness.  */
-          status = ux_demo_hid_consumer_brightness_control(hid_consumer);
+        /* Control brightness.  */
+        status = ux_demo_hid_consumer_brightness_control(hid_consumer);
 
-          if (status == UX_CONSUMER_BRIGHTNESS_DONE)
-              demo_state = UX_CONSUMER_FINISH;
+        if (status == UX_CONSUMER_BRIGHTNESS_DONE)
+            demo_state = UX_CONSUMER_FINISH;
 
-          break;
+        break;
 
-        default:
+      default:
 
-          ux_utility_delay_ms(MS_TO_TICK(10));
-
-          break;
-        }
-      }
-      else
-      {
-        /* Sleep thread for 10ms.  */
         ux_utility_delay_ms(MS_TO_TICK(10));
+
+        break;
       }
     }
 }

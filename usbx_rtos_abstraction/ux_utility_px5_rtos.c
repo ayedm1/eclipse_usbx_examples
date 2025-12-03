@@ -98,8 +98,7 @@ UINT    status;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_thread_terminate                  ThreadX terminate thread       */
-/*    tx_thread_delete                     ThreadX delete thread service  */
+/*    pthread_cancel                           PX5 terminate thread       */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
@@ -112,11 +111,8 @@ UINT  _ux_utility_thread_delete(UX_THREAD *thread_ptr)
 UINT    status;
 
 
-    /* Call ThreadX to terminate the USBX thread.  */
-    tx_thread_terminate(thread_ptr);
-
-    /* Call ThreadX to delete the USBX thread.  */
-    status =  tx_thread_delete(thread_ptr);
+    /* Cancel the thread, effectively terminating it.  */
+    status =  (UINT)pthread_cancel(thread_ptr);
 
     /* Return completion status.  */
     return(status);
@@ -147,7 +143,6 @@ UINT    status;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_thread_identify                       ThreadX identify function  */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
@@ -160,7 +155,7 @@ UX_THREAD *_ux_utility_thread_identify(VOID)
 
     /* If we're under interrupt, the thread returned by tx_thread_identify
         is the thread running prior to the ISR. Instead, we set it to null.  */
-    return(UX_THREAD_GET_SYSTEM_STATE() ? UX_NULL : tx_thread_identify());
+    return(UX_THREAD_GET_SYSTEM_STATE() ? UX_NULL : px5_globals.executing_thread[PX5_EXECUTING_CORE]);
 }
 
 
@@ -186,7 +181,7 @@ UX_THREAD *_ux_utility_thread_identify(VOID)
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_thread_relinquish                  ThreadX relinquish thread     */
+/*    sched_yield                            PX5 thread yield function    */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
@@ -196,8 +191,8 @@ UX_THREAD *_ux_utility_thread_identify(VOID)
 VOID  _ux_utility_thread_relinquish(VOID)
 {
 
-    /* Call ThreadX to relinquish a USBX thread.  */
-    tx_thread_relinquish();
+    /* Yield the thread.  */
+    sched_yield();
 
 }
 
@@ -226,7 +221,7 @@ VOID  _ux_utility_thread_relinquish(VOID)
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_thread_resume                      ThreadX resume thread function*/
+/*    px5_pthread_resume                      PX5 resume thread function  */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
@@ -239,8 +234,8 @@ UINT  _ux_utility_thread_resume(UX_THREAD *thread_ptr)
 UINT    status;
 
 
-    /* Call ThreadX to resume USBX thread.  */
-    status =  tx_thread_resume(thread_ptr);
+    /* Resume the thread.  */
+    status =  (UINT)px5_pthread_resume(thread_ptr);
 
     /* Return completion status.  */
     return(status);
@@ -263,7 +258,7 @@ UINT    status;
 /*                                                                        */
 /*  INPUT                                                                 */
 /*                                                                        */
-/*    caller_priority                        Priority to restore.          */
+/*    caller_priority                        Priority to restore.         */
 /*                                                                        */
 /*  OUTPUT                                                                */
 /*                                                                        */
@@ -271,9 +266,7 @@ UINT    status;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_thread_identify                    ThreadX identify              */
-/*    tx_thread_priority_change             ThreadX priority change       */
-/*    tx_thread_relinquish                  ThreadX relinquish            */
+/*    px5_pthread_priority_change           PX5 priority change           */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
@@ -290,20 +283,22 @@ UX_THREAD   *my_thread;
     UX_PARAMETER_NOT_USED(caller_priority);
 
     /* Call TX to know my own tread.  */
-    my_thread = tx_thread_identify();
+    my_thread = px5_globals.executing_thread[PX5_EXECUTING_CORE];
 
-    /* Call ThreadX to change thread priority .  */
-    status =  tx_thread_priority_change(my_thread, _ux_system -> ux_system_thread_lowest_priority, &old_priority);
+    /* Change the thread's priority.  */
+    status =  (UINT)px5_pthread_priority_change(my_thread, (int)_ux_system -> ux_system_thread_lowest_priority, (int *)&old_priority);
+
 
     /* Check for error.  */
-    if (status == TX_SUCCESS)
+    if (status == UX_SUCCESS)
     {
 
         /* Wait until all other threads passed into the scheduler. */
         _ux_utility_thread_relinquish();
 
         /* And now return the priority of the thread to normal.  */
-        status =  tx_thread_priority_change(my_thread, old_priority, &old_priority);
+        status =  (UINT)px5_pthread_priority_change(my_thread, (int)_ux_system -> ux_system_thread_lowest_priority, (int *)&old_priority);
+
 
     }
 
@@ -337,7 +332,7 @@ UX_THREAD   *my_thread;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_thread_sleep                       ThreadX sleep function        */
+/*    px5_pthread_tick_sleep               PX5 sleep function             */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
@@ -349,8 +344,8 @@ UINT  _ux_utility_thread_sleep(ULONG ticks)
 
 UINT    status;
 
-    /* Call ThreadX sleep function.  */
-    status =  tx_thread_sleep(ticks);
+    /* Call PX5 sleep function.  */
+    status =  (UINT)px5_pthread_tick_sleep((tick_t)ticks);
 
     return(status);
 }
@@ -380,7 +375,7 @@ UINT    status;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_thread_suspend                     ThreadX suspend thread service*/
+/*    px5_pthread_suspend                  PX5 suspend thread service     */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
@@ -393,8 +388,8 @@ UINT  _ux_utility_thread_suspend(UX_THREAD *thread_ptr)
 UINT    status;
 
 
-    /* Call ThreadX to suspend USBX thread.  */
-    status =  tx_thread_suspend(thread_ptr);
+    /* Call PX5 to suspend USBX thread.  */
+    status =  (UINT)px5_pthread_suspend(thread_ptr);
 
     /* Return completion status.  */
     return(status);
@@ -426,7 +421,7 @@ UINT    status;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_mutex_create                       ThreadX mutex create          */
+/*    pthread_mutex_init                        PX5 mutex create          */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
@@ -436,23 +431,187 @@ UINT    status;
 UINT  _ux_utility_mutex_create(UX_MUTEX *mutex, CHAR *mutex_name)
 {
 
-UINT    status;
+UINT                status;
+pthread_mutex_t     mutex_handle;
+pthread_mutexattr_t mutex_attributes;
 
 
-    /* Call ThreadX to create the Mutex object.  */
-    status =  tx_mutex_create(mutex, (CHAR *) mutex_name, TX_NO_INHERIT);
+    /* Setup the mutex attribtues.  */
+    pthread_mutexattr_init(&mutex_attributes);
+    px5_pthread_mutexattr_setcontroladdr(&mutex_attributes, mutex, sizeof(px5_mutex_control));
+    px5_pthread_mutexattr_setname(&mutex_attributes, mutex_name);
 
-    /* Check for status.  */
-    if (status != UX_SUCCESS)
+    /* Check if priority inheritance is desired.  */
+    if (priority_inherit == 1)
     {
 
-        /* Error trap. */
-        _ux_system_error_handler(UX_SYSTEM_LEVEL_THREAD, UX_SYSTEM_CONTEXT_UTILITY, status);
+        /* Set priority inheritance.  */
+        pthread_mutexattr_setprotocol(&mutex_attributes, PTHREAD_PRIO_INHERIT);
     }
+
+    /* Mark the mutex as invalid.  */
+    mutex_handle.mutex_handle_id =  0;
+
+    /* Create the mutex.  */
+    status =  (UINT)pthread_mutex_init(&mutex_handle, &mutex_attributes);
+
     /* Return completion status.  */
     return(status);
 }
 
+/**************************************************************************/
+/*                                                                        */
+/*  FUNCTION                                               RELEASE        */
+/*                                                                        */
+/*    _ux_utility_mutex_create                            PORTABLE C      */
+/*                                                           6.1.11       */
+/*  AUTHOR                                                                */
+/*                                                                        */
+/*    Chaoqiong Xiao, Microsoft Corporation                               */
+/*                                                                        */
+/*  DESCRIPTION                                                           */
+/*                                                                        */
+/*    This function creates a protection mutex.                           */
+/*                                                                        */
+/*  INPUT                                                                 */
+/*                                                                        */
+/*    mutex                                 Pointer to mutex              */
+/*    mutex_name                            Name of mutex                 */
+/*                                                                        */
+/*  OUTPUT                                                                */
+/*                                                                        */
+/*    Completion Status                                                   */
+/*                                                                        */
+/*  CALLS                                                                 */
+/*                                                                        */
+/*    pthread_mutex_init                        PX5 mutex create          */
+/*                                                                        */
+/*  CALLED BY                                                             */
+/*                                                                        */
+/*    USBX Components                                                     */
+/*                                                                        */
+/**************************************************************************/
+UINT  _ux_utility_thread_preemption_change(UX_THREAD *thread_ptr, UINT new_threshold, UINT *old_threshold)
+{
+
+PX5_PROTECTION_SAVE
+
+UINT status;
+UINT new_priority;
+
+
+    /* Are we adding a new threshold?  */
+    if (!(new_threshold & 0x8000))
+    {
+
+        /* Get protection.  */
+        PX5_PROTECTION_START
+
+        /* Determine if we are disabling all preemptions.  */
+        if (new_threshold == 0)
+        {
+
+            /* Set the priority to the maximum.  */
+            new_priority =  PX5_MAXIMUM_PRIORITIES - 1;
+        }
+        else
+        {
+
+            /* We are not disabling all preemptions.  */
+
+            /* Determine if the new threshold is higher than the thread's priority. */
+            if (new_threshold > thread_ptr -> priority)
+            {
+
+                /* Set the priority to the threshold.  */
+                new_priority =  new_threshold;
+            }
+            else
+            {
+
+                /* Set the priority to the thread's priority.  */
+                new_priority =  thread_ptr -> priority;
+            }
+        }
+
+        /* Increment the priority; we do this because upon restoring a previous threshold, this thread
+           will be placed at the end of the ready list for that priority level causing threads ahead
+           of it to run first, which is not the desired behavior.  */
+        new_priority =  new_priority + 1;
+
+        /* Determine if the new priority exceeds the maximum priorities.  */
+        if (new_priority == PX5_MAXIMUM_PRIORITIES)
+        {
+
+            /* Set it to the maximum.  */
+            new_priority =  PX5_MAXIMUM_PRIORITIES - 1;
+        }
+
+        /* Determine if this is the first threshold.  */
+        if (thread_ptr -> preemption_change_nested_count == 0)
+        {
+
+            /* This is the first threshold.  We need to disable time-slicing for this thread to ensure it can't
+               be preempted by threads of the same priority; note that this is only necessary when disabling
+               all priorities (where the threshold is maximum), but we still do it in the other case as well for
+               simplicity.  */
+
+            /* Save the remaining time slice.  */
+            thread_ptr -> preemption_change_original_time_slice_remaining =  thread_ptr -> time_slice_remaining;
+
+            /* Disable time-slicing.  */
+            thread_ptr -> time_slice_remaining =  0;
+        }
+
+        /* Change the priority.  */
+        status = px5_pthread_priority_change(thread_ptr, new_priority, (int *)old_threshold);
+
+        /* End and restore prior protection posture.  */
+        PX5_PROTECTION_END
+
+        /* Determine if the request succeeded.  */
+        if (status == PX5_SUCCESS)
+        {
+
+            /* Flag the old threshold so we'll know later if we're restoring a previous one.  */
+            *old_threshold |=  0x8000;
+
+            /* Increment the nested count.  */
+            thread_ptr -> preemption_change_nested_count++;
+        }
+    }
+    else
+    {
+
+        /* We are restoring a previous threshold.  */
+
+        /* Remove the flag.  */
+        new_threshold &=  (~(0x8000));
+
+        /* Decrement the nested count.  */
+        thread_ptr -> preemption_change_nested_count--;
+
+        /* Get protection.  */
+        PX5_PROTECTION_START
+
+        /* Determine if this is the last added threshold.  */
+        if (thread_ptr -> preemption_change_nested_count == 0)
+        {
+
+            /* Re-enable time-slicing.  */
+            thread_ptr -> time_slice_remaining =  thread_ptr -> preemption_change_original_time_slice_remaining;
+        }
+
+        /* Change the priority.  */
+        status = px5_pthread_priority_change(thread_ptr, new_threshold, (int *)old_threshold);
+
+        /* End and restore prior protection posture.  */
+        PX5_PROTECTION_END
+    }
+
+    /* Return status to the caller.  */
+    return(status);
+}
 
 /**************************************************************************/
 /*                                                                        */
@@ -488,11 +647,28 @@ UINT    status;
 UINT  _ux_utility_mutex_delete(UX_MUTEX *mutex)
 {
 
-UINT    status;
+UINT            status;
+pthread_mutex_t mutex_handle;
+UINT            old_threshold;
 
 
-    /* Call ThreadX to delete the Mutex object.  */
-    status =  tx_mutex_delete(mutex);
+    /* Setup the handle.  */
+    mutex_handle.mutex_handle_id =  PX5_MUTEX_HANDLE_ID;
+    mutex_handle.internal_mutex_control =  mutex;
+
+    /* Disable preemptions so we can atomically unlock and destroy the mutex.  */
+    _ux_utility_thread_preemption_change(px5_globals.executing_thread[PX5_EXECUTING_CORE], 0, &old_threshold);
+
+    /* Ensure the mutex has no owners before destroying, a condition for pthread_mutex_destroy().  To make this
+       more robust, we would need to take into account nested locks and unlock it that number of times, however,
+       for the middleware the mutex is only ever locked once whenever tx_mutex_delete is called.  */
+    pthread_mutex_unlock(&mutex_handle);
+
+    /* Destroy the mutex.  */
+    status =  (UINT)pthread_mutex_destroy(&mutex_handle);
+
+    /* Enable preemptions.  */
+    _ux_utility_thread_preemption_change(px5_globals.executing_thread[PX5_EXECUTING_CORE], old_threshold, &old_threshold);
 
     /* Return completion status.  */
     return(status);
@@ -523,18 +699,25 @@ UINT    status;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_mutex_put                          ThreadX mutex put             */
+/*    pthread_mutex_unlock                  ThreadX mutex put             */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
 /*    USBX Components                                                     */
 /*                                                                        */
 /**************************************************************************/
-VOID  _ux_utility_mutex_off(UX_MUTEX *mutex)
+VOID  _ux_utility_mutex_off(UX_MUTEX *mutex_ptr)
 {
 
-    /* Call ThreadX to release protection.  */
-    tx_mutex_put(mutex);
+pthread_mutex_t mutex_handle;
+
+
+    /* Setup the handle.  */
+    mutex_handle.mutex_handle_id =  PX5_MUTEX_HANDLE_ID;
+    mutex_handle.internal_mutex_control =  mutex_ptr;
+
+    /* Unlock the mutex.  */
+    result =  (u_int)pthread_mutex_unlock(&mutex_handle);
 
     /* Return to caller.  */
     return;
@@ -565,7 +748,7 @@ VOID  _ux_utility_mutex_off(UX_MUTEX *mutex)
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_mutex_get                          ThreadX mutex get             */
+/*    pthread_mutex_lock                    PX5 mutex lock                */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
@@ -575,10 +758,26 @@ VOID  _ux_utility_mutex_off(UX_MUTEX *mutex)
 VOID  _ux_utility_mutex_on(UX_MUTEX *mutex)
 {
 
-UINT    status;
+UINT            status;
+pthread_mutex_t mutex_handle;
 
-    /* Call ThreadX to get system mutex.  */
-    status =  tx_mutex_get(mutex, TX_WAIT_FOREVER);
+
+    /* Setup the handle.  */
+    mutex_handle.mutex_handle_id =  PX5_MUTEX_HANDLE_ID;
+    mutex_handle.internal_mutex_control =  mutex;
+
+    /* Check the wait option.  */
+    if (wait_option != UX_WAIT_FOREVER)
+    {
+
+        /* Only UX_WAIT_FOREVER is supported.  */
+
+        /* Return status to the caller.  */
+        return(UX_WAIT_ERROR);
+    }
+
+    /* Lock the mutex.  */
+    status =  (UINT)pthread_mutex_lock(&mutex_handle);
 
     /* Check for status.  */
     if (status != UX_SUCCESS)
@@ -619,7 +818,7 @@ UINT    status;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_semaphore_create                   ThreadX semaphore create      */
+/*    px5_sem_extend_init                   PX5 semaphore create          */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
@@ -629,10 +828,21 @@ UINT    status;
 UINT  _ux_utility_semaphore_create(UX_SEMAPHORE *semaphore, CHAR *semaphore_name, UINT initial_count)
 {
 
-UINT    status;
+UINT        status;
+sem_t       semaphore_handle;
+semattr_t   semaphore_attributes;
 
-    /* Call ThreadX to create the semaphore.  */
-    status =  tx_semaphore_create(semaphore, (CHAR *) semaphore_name, initial_count);
+
+    /* Setup the attributes for the semaphore.  */
+    px5_semattr_init(&semaphore_attributes);
+    px5_semattr_setcontroladdr(&semaphore_attributes, semaphore, sizeof(UX_SEMAPHORE));
+    px5_semattr_setname(&semaphore_attributes, semaphore_name);
+
+    /* Mark the semaphore as uninitialized.  */
+    semaphore_handle.semaphore_handle_id =  0;
+
+    /* Create the semaphore.  */
+    status =  (UINT)px5_sem_extend_init(&semaphore_handle, 0, initial_count, &semaphore_attributes);
 
     /* Check for status.  */
     if (status != UX_SUCCESS)
@@ -671,7 +881,7 @@ UINT    status;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_semaphore_delete                   ThreadX semaphore delete      */
+/*    sem_destroy                   PX5 semaphore destroy                 */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
@@ -682,9 +892,15 @@ UINT  _ux_utility_semaphore_delete(UX_SEMAPHORE *semaphore)
 {
 
 UINT    status;
+sem_t   semaphore_handle;
 
-    /* Call ThreadX Semaphore delete function.  */
-    status =  tx_semaphore_delete(semaphore);
+
+    /* Setup the handle.  */
+    semaphore_handle.semaphore_handle_id = PX5_SEMAPHORE_HANDLE_ID;
+    semaphore_handle.internal_semaphore_control = semaphore;
+
+    /* Destroy the semaphore.  */
+    status =  (UINT)sem_destroy(&semaphore_handle);
 
     /* Return completion status.  */
     return(status);
@@ -715,39 +931,26 @@ UINT    status;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_thread_identify                    ThreadX identify thread       */
-/*    tx_thread_info_get                    ThreadX get thread info       */
-/*    tx_semaphore_get                      ThreadX semaphore get         */
+/*    px5_sem_wait                         PX5 semaphore wait             */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
 /*    USBX Components                                                     */
 /*                                                                        */
 /**************************************************************************/
-UINT  _ux_utility_semaphore_get(UX_SEMAPHORE *semaphore, ULONG semaphore_signal)
+UINT  _ux_utility_semaphore_get(UX_SEMAPHORE *semaphore_ptr, ULONG wait_option)
 {
 
 UINT        status;
 UX_THREAD   *my_thread;
-CHAR        *name;
-UINT        state;
-ULONG       run_count;
 UINT        priority;
-UINT        preemption_threshold;
-ULONG       time_slice;
-UX_THREAD   *next_thread;
-UX_THREAD   *suspended_thread;
+sem_t       semaphore_handle;
 
     /* Call TX to know my own tread.  */
-    my_thread = tx_thread_identify();
-
-    /* Retrieve information about the previously created thread "my_thread." */
-    tx_thread_info_get(my_thread, &name, &state, &run_count,
-                       &priority, &preemption_threshold,
-                       &time_slice, &next_thread,&suspended_thread);
+    my_thread = px5_globals.executing_thread[PX5_EXECUTING_CORE];
 
     /* Is this the lowest priority thread in the system trying to use TX services ? */
-    if (priority > _ux_system -> ux_system_thread_lowest_priority)
+    if (my_thread -> priority > _ux_system -> ux_system_thread_lowest_priority)
     {
 
         /* We need to remember this thread priority.  */
@@ -755,8 +958,23 @@ UX_THREAD   *suspended_thread;
 
     }
 
-    /* Get ThreadX semaphore instance.  */
-    status =  tx_semaphore_get(semaphore, semaphore_signal);
+    /* Setup the handle.  */
+    semaphore_handle.semaphore_handle_id = PX5_SEMAPHORE_HANDLE_ID;
+    semaphore_handle.internal_semaphore_control = semaphore_ptr;
+
+    /* Check the wait option.  */
+    if (wait_option == 0xFFFFFFFF)
+    {
+
+        /* Wait for the semaphore.  */
+        result =  (u_int)sem_wait(&semaphore_handle);
+    }
+    else
+    {
+
+        /* Wait for the semaphore.  */
+        result =  (u_int)px5_sem_tickwait(&semaphore_handle, wait_option);
+    }
 
     /* Return completion status.  */
     return(status);
@@ -787,7 +1005,7 @@ UX_THREAD   *suspended_thread;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_semaphore_put                      ThreadX semaphore put         */
+/*    sem_post                        PX5 semaphore put                   */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
@@ -798,9 +1016,15 @@ UINT  _ux_utility_semaphore_put(UX_SEMAPHORE *semaphore)
 {
 
 UINT    status;
+sem_t   semaphore_handle;
 
-    /* Put a ThreadX semaphore.  */
-    status =  tx_semaphore_put(semaphore);
+
+    /* Setup the handle.  */
+    semaphore_handle.semaphore_handle_id = PX5_SEMAPHORE_HANDLE_ID;
+    semaphore_handle.internal_semaphore_control = semaphore;
+
+    /* Release the semaphore.  */
+    status =  (UINT)sem_post(&semaphore_handle);
 
     /* Return completion status.  */
     return(status);
@@ -832,20 +1056,31 @@ UINT    status;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_event_flags_create                 ThreadX create event flag     */
+/*    px5_pthread_event_flags_create            PX5 create event flag     */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
 /*    USBX Components                                                     */
 /*                                                                        */
 /**************************************************************************/
-UINT  _ux_utility_event_flags_create(UX_EVENT_FLAGS_GROUP*group_ptr, CHAR *name)
+UINT  _ux_utility_event_flags_create(UX_EVENT_FLAGS_GROUP *group_ptr, CHAR *name_ptr)
 {
 
 UINT    status;
+pthread_event_flags_t       event_flags_handle;
+pthread_event_flagsattr_t   event_flags_attributes;
 
-    /* Call ThreadX to create the event flags.  */
-    status =  tx_event_flags_create(group_ptr, name);
+
+    /* Setup the event flags attributes.  */
+    px5_pthread_event_flagsattr_init(&event_flags_attributes);
+    px5_pthread_event_flagsattr_setcontroladdr(&event_flags_attributes, group_ptr, sizeof(px5_event_flags_control));
+    px5_pthread_event_flagsattr_setname(&event_flags_attributes, name_ptr);
+
+    /* Mark the handle as uninitialized.  */
+    event_flags_handle.event_flags_handle_id =  0;
+
+    /* Create the event flags.  */
+    status =  (UINT)px5_pthread_event_flags_create(&event_flags_handle, &event_flags_attributes);
 
     /* Check for status.  */
     if (status != UX_SUCCESS)
@@ -883,20 +1118,26 @@ UINT    status;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_event_flags_delete                 ThreadX delete event flag     */
+/*    px5_pthread_event_flags_destroy           PX5 delete event flag     */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
 /*    USBX Components                                                     */
 /*                                                                        */
 /**************************************************************************/
-UINT  _ux_utility_event_flags_delete(UX_EVENT_FLAGS_GROUP*group_ptr)
+UINT  _ux_utility_event_flags_delete(UX_EVENT_FLAGS_GROUP *group_ptr)
 {
 
-UINT    status;
+UINT                  status;
+pthread_event_flags_t event_flags_handle;
 
-    /* Call ThreadX to delete the event flags.  */
-    status =  tx_event_flags_delete(group_ptr);
+
+    /* Setup the handle.  */
+    event_flags_handle.event_flags_handle_id = PX5_EVENT_FLAGS_HANDLE_ID;
+    event_flags_handle.internal_event_flags_control = group_ptr;
+
+    /* Destroy the event flags.  */
+    status =  (UINT)px5_pthread_event_flags_destroy(&event_flags_handle);
 
     /* Return completion status.  */
     return(status);
@@ -932,23 +1173,48 @@ UINT    status;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_event_flags_get                    ThreadX get event flag        */
+/*    px5_pthread_event_flags_wait              PX5 get event flag        */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
 /**************************************************************************/
-UINT  _ux_utility_event_flags_get(UX_EVENT_FLAGS_GROUP*group_ptr, ULONG requested_flags,
+UINT  _ux_utility_event_flags_get(UX_EVENT_FLAGS_GROUP *group_ptr, ULONG requested_flags,
                                         UINT get_option, ULONG *actual_flags_ptr, ULONG wait_option)
 {
 
-UINT    status;
-ULONG   local_actual_flags_ptr;
+UINT                  status;
+pthread_event_flags_t event_flags_handle;
 
-    /* Call ThreadX to get the event flags.  */
-    status =  tx_event_flags_get(group_ptr, requested_flags, get_option, &local_actual_flags_ptr, wait_option);
 
-    /* Update the actual flags.  */
-    *actual_flags_ptr = local_actual_flags_ptr;
+    /* Setup the handle.  */
+    event_flags_handle.event_flags_handle_id = PX5_EVENT_FLAGS_HANDLE_ID;
+    event_flags_handle.internal_event_flags_control = group_ptr;
+
+    /* Check the wait option.  */
+    if (wait_option != UX_WAIT_FOREVER)
+    {
+
+        /* Only UX_WAIT_FOREVER is supported.  */
+
+        /* Return error. */
+        return(UX_WAIT_ERROR);
+    }
+
+    /* Check the get option.  */
+    if (get_option != UX_AND_CLEAR &&
+        get_option != UX_OR_CLEAR)
+    {
+
+        /* Only UX_AND_CLEAR and UX_OR_CLEAR are supported.  */
+
+        /* Return error.  */
+        return(UX_OPTION_ERROR);
+    }
+
+    /* Wait for the event flags.  */
+    result =  (u_int)px5_pthread_event_flags_wait(&event_flags_handle, requested_flags,
+                                                  get_option == UX_AND_CLEAR ? PTHREAD_ALL_EVENTS : PTHREAD_ANY_EVENT,
+                                                  actual_flags_ptr);
 
     /* Return completion status.  */
     return(status);
@@ -982,21 +1248,35 @@ ULONG   local_actual_flags_ptr;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_event_flags_set                    ThreadX set event flag        */
+/*    px5_pthread_event_flags_set               PX5 set event flag        */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
 /*    USBX Components                                                     */
 /*                                                                        */
 /**************************************************************************/
-UINT  _ux_utility_event_flags_set(UX_EVENT_FLAGS_GROUP*group_ptr, ULONG flags_to_set,
+UINT  _ux_utility_event_flags_set(UX_EVENT_FLAGS_GROUP *group_ptr, ULONG flags_to_set,
                                   UINT set_option)
 {
 
-UINT    status;
+UINT                  status;
+pthread_event_flags_t event_flags_handle;
 
-    /* Call ThreadX to set the event flags.  */
-    status =  tx_event_flags_set(group_ptr, flags_to_set, set_option);
+
+    /* Setup the handle.  */
+    event_flags_handle.event_flags_handle_id = PX5_EVENT_FLAGS_HANDLE_ID;
+    event_flags_handle.internal_event_flags_control = group_ptr;
+
+    /* Check the set option.  */
+    if (set_option != UX_OR)
+    {
+
+        /* Only UX_OR is supported.  */
+        return(UX_OPTION_ERROR);
+    }
+
+    /* Set the event flags.  */
+    status =  (UINT)px5_pthread_event_flags_set(&event_flags_handle, flags_to_set);
 
     /* Return completion status.  */
     return(status);
@@ -1028,24 +1308,48 @@ UINT    status;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_timer_create                       ThreadX timer create          */
+/*    px5_pthread_ticktimer_create              PX5 timer create          */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
 /*    USBX Components                                                     */
 /*                                                                        */
 /**************************************************************************/
-UINT  _ux_utility_timer_create(UX_TIMER *timer, CHAR *timer_name, VOID (*expiration_function) (ULONG),
+UINT  _ux_utility_timer_create(UX_TIMER *timer_ptr, CHAR *name_ptr, VOID (*expiration_function) (ULONG),
                                 ULONG expiration_input, ULONG initial_ticks, ULONG reschedule_ticks,
-                                UINT activation_flag)
+                                UINT auto_activate)
 {
 
-UINT    status;
+UINT                    status;
+pthread_ticktimer_t     ticktimer_handle;
+pthread_ticktimerattr_t ticktimer_attributes;
 
 
-    /* Call ThreadX to create the timer object.  */
-    status =  tx_timer_create(timer, (CHAR *) timer_name, expiration_function, expiration_input,
-                                initial_ticks, reschedule_ticks, activation_flag);
+    /* Setup the ticktimer attributes.  */
+    px5_pthread_ticktimerattr_init(&ticktimer_attributes);
+    px5_pthread_ticktimerattr_setcontroladdr(&ticktimer_attributes, timer_ptr, sizeof(px5_ticktimer_control));
+    px5_pthread_ticktimerattr_setname(&ticktimer_attributes, name_ptr);
+
+    /* Mark the ticktimer as uninitialized.  */
+    ticktimer_handle.ticktimer_handle_id = 0;
+
+    /* Create the ticktimer.  */
+    status = (UINT)px5_pthread_ticktimer_create(&ticktimer_handle, &ticktimer_attributes, _px5_threadx_timer_expiration_function,
+                                               (VOID *)expiration_input, initial_ticks, reschedule_ticks);
+
+    /* Save the expiration function and input; this must be done after the create call so the internal
+       ticktimer has been allocated.  */
+    timer_ptr -> threadx_timer_expiration_function = expiration_function;
+    timer_ptr -> threadx_timer_expiration_function_input = expiration_input;
+
+    /* Check auto activation.  */
+    if (auto_activate == UX_AUTO_ACTIVATE)
+    {
+
+        /* Start the ticktimer.  */
+        px5_pthread_ticktimer_start(&ticktimer_handle);
+    }
+
 
     /* Check status.  */
     if (status != UX_SUCCESS)
@@ -1082,21 +1386,26 @@ UINT    status;
 /*                                                                        */
 /*  CALLS                                                                 */
 /*                                                                        */
-/*    tx_timer_delete                       ThreadX timer delete          */
+/*    px5_pthread_ticktimer_destroy             PX5 timer delete          */
 /*                                                                        */
 /*  CALLED BY                                                             */
 /*                                                                        */
 /*    USBX Components                                                     */
 /*                                                                        */
 /**************************************************************************/
-UINT  _ux_utility_timer_delete(UX_TIMER *timer)
+UINT  _ux_utility_timer_delete(UX_TIMER *timer_ptr)
 {
 
-UINT    status;
+UINT                status;
+pthread_ticktimer_t ticktimer_handle;
 
 
-    /* Call ThreadX to delete the timer object.  */
-    status =  tx_timer_delete(timer);
+    /* Setup the handle.  */
+    ticktimer_handle.ticktimer_handle_id = PX5_TICKTIMER_HANDLE_ID;
+    ticktimer_handle.internal_ticktimer_control = timer_ptr;
+
+    /* Destroy the ticktimer.  */
+    status =  (UINT)px5_pthread_ticktimer_destroy(&ticktimer_handle);
 
     /* Return completion status.  */
     return(status);

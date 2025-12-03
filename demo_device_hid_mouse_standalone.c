@@ -88,16 +88,6 @@ UINT ux_demo_device_hid_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_CLAS
 UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_CLASS_HID_EVENT *hid_event);
 
 /**************************************************/
-/**  usbx application initialization with RTOS    */
-/**************************************************/
-VOID tx_application_define(VOID *first_unused_memory);
-
-/**************************************************/
-/**  usbx device hid demo thread                  */
-/**************************************************/
-VOID ux_demo_device_hid_thread_entry(ULONG thread_input);
-
-/**************************************************/
 /**  usbx device hid demo mouse                   */
 /**************************************************/
 UINT ux_demo_hid_mouse_buttons(UX_SLAVE_CLASS_HID *device_hid);
