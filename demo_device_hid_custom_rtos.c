@@ -153,7 +153,7 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     /* Configuration Descriptor, total 34 */
     0x09,                       /* bLength */
     0x02,                       /* bDescriptorType */
-    0x22, 0x00,                 /* wTotalLength : 34 */
+    UX_W0(UX_DEMO_HID_CONFIG_DESC_SIZE), UX_W1(UX_DEMO_HID_CONFIG_DESC_SIZE), /* wTotalLength */
     0x01,                       /* bNumInterfaces */
     0x01,                       /* bConfigurationValue */
     0x04,                       /* iConfiguration */
@@ -247,7 +247,7 @@ UCHAR ux_demo_device_framework_high_speed[] = {
     0x01,                       /* bNumEndpoints */
     0x03,                       /* bInterfaceClass : 0x03 : HID */
     0x00,                       /* bInterfaceSubClass : non-boot Subclass */
-    0x02,                       /* bInterfaceProtocol : 0x00 : Undefined */
+    0x00,                       /* bInterfaceProtocol : 0x00 : Undefined */
     0x06,                       /* iInterface */
 
     /* HID Descriptor */

@@ -33,7 +33,7 @@
 #define UX_DEMO_HID_DEVICE_PID                  0x4027
 
 #define UX_DEMO_MAX_EP0_SIZE                    0x40U
-#define UX_DEMO_HID_CONFIG_DESC_SIZE            0x22U
+#define UX_DEMO_HID_CONFIG_DESC_SIZE            0x29U
 
 #define UX_DEMO_BCD_USB                         0x0200
 
@@ -54,6 +54,12 @@ VOID ux_demo_device_hid_instance_activate(VOID *hid_instance);
 VOID ux_demo_device_hid_instance_deactivate(VOID *hid_instance);
 UINT ux_demo_device_hid_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_CLASS_HID_EVENT *hid_event);
 UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_CLASS_HID_EVENT *hid_event);
+VOID ux_demo_hid_receiver_event_callback(struct UX_SLAVE_CLASS_HID_STRUCT *hid_instance);
+
+/**************************************************/
+/**  usbx device hid demo thread                  */
+/**************************************************/
+VOID ux_demo_device_hid_thread_entry(ULONG thread_input);
 
 /**************************************************/
 /**  usbx application initialization with RTOS    */
@@ -61,7 +67,7 @@ UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_
 VOID tx_application_define(VOID *first_unused_memory);
 
 /**************************************************/
-/**  usbx device hid consumer instance            */
+/**  usbx device hid inout instance               */
 /**************************************************/
 UX_SLAVE_CLASS_HID *hid_inout;
 
@@ -128,7 +134,7 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     /* Configuration Descriptor, total 34 */
     0x09,                       /* bLength */
     0x02,                       /* bDescriptorType */
-    0x22, 0x00,                 /* wTotalLength : 34 */
+    UX_W0(UX_DEMO_HID_CONFIG_DESC_SIZE), UX_W1(UX_DEMO_HID_CONFIG_DESC_SIZE), /* wTotalLength */
     0x01,                       /* bNumInterfaces */
     0x01,                       /* bConfigurationValue */
     0x04,                       /* iConfiguration */
@@ -174,6 +180,7 @@ UCHAR ux_demo_device_framework_full_speed[] = {
 
     /* Endpoint descriptor (Interrupt EP OUT) */
     0x07,                           /* bLength */
+    0x05,                           /* bDescriptorType */
     UX_DEMO_HID_ENDPOINT_OUT_ADDRESS,   /* bEndpointAddress */
                                     /* D7, Direction : 0x01 */
                                     /* D3..0, Endpoint number : 2 */
@@ -236,7 +243,7 @@ UCHAR ux_demo_device_framework_high_speed[] = {
     0x02,                       /* bNumEndpoints */
     0x03,                       /* bInterfaceClass : 0x03 : HID */
     0x00,                       /* bInterfaceSubClass : non-boot Subclass */
-    0x02,                       /* bInterfaceProtocol : 0x00 : Undefined */
+    0x00,                       /* bInterfaceProtocol : 0x00 : Undefined */
     0x06,                       /* iInterface */
 
     /* HID Descriptor */
@@ -265,6 +272,7 @@ UCHAR ux_demo_device_framework_high_speed[] = {
 
     /* Endpoint descriptor (Interrupt EP OUT) */
     0x07,                           /* bLength */
+    0x05,                           /* bDescriptorType */
     UX_DEMO_HID_ENDPOINT_OUT_ADDRESS,   /* bEndpointAddress */
                                     /* D7, Direction : 0x01 */
                                     /* D3..0, Endpoint number : 2 */
@@ -292,8 +300,8 @@ UCHAR ux_demo_string_framework[] = {
     'U', 'S', 'B', 'X', ' ', 'e', 'c', 'l', 'i', 'p', 's', 'e',
 
     /* iProduct string descriptor : Index 2 */
-    0x09, 0x04, 0x02, 17,
-    'H', 'I', 'D', ' ', 'C', 'o', 'n', 's', 'u', 'm', 'e', 'r', ' ', 'D', 'e', 'm', 'o',
+    0x09, 0x04, 0x02, 16,
+    'H', 'I', 'D', ' ', 'G', 'e', 'n', 'e', 'r', 'i', 'c', ' ', 'D', 'e', 'm', 'o',
 
     /* iSerialNumber Number string descriptor : Index 3 */
     0x09, 0x04, 0x03, 13,
@@ -363,7 +371,7 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_inout_parameter;
     if(status != UX_SUCCESS)
         return;
 
-    /* Initialize the hid consumer class parameters for the device */
+    /* Initialize the hid class parameters for the device */
     hid_inout_parameter.ux_slave_class_hid_instance_activate         = ux_demo_device_hid_instance_activate;
     hid_inout_parameter.ux_slave_class_hid_instance_deactivate       = ux_demo_device_hid_instance_deactivate;
     hid_inout_parameter.ux_device_class_hid_parameter_report_address = hid_inout_report;
@@ -383,6 +391,14 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_inout_parameter;
     if(status != UX_SUCCESS)
         return;
 
+    /* Create the main demo thread.  */
+    status = ux_utility_thread_create(&ux_hid_thread, "hid_usbx_app_thread_entry",
+                                      ux_demo_device_hid_thread_entry, 0, stack_pointer,
+                                      1024, 20, 20, 1, TX_AUTO_START);
+
+    if(status != UX_SUCCESS)
+        return;
+
     /* Register error callback.  */
     ux_utility_error_callback_register(ux_demo_error_callback);
 }
@@ -392,8 +408,8 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_inout_parameter;
 /********************************************************************/
 VOID ux_demo_device_hid_instance_activate(VOID *hid_instance)
 {
-    if (hid_consumer == UX_NULL)
-        hid_consumer = (UX_SLAVE_CLASS_HID*) hid_instance;
+    if (hid_inout == UX_NULL)
+        hid_inout = (UX_SLAVE_CLASS_HID*) hid_instance;
 }
 
 /********************************************************************/
@@ -401,8 +417,8 @@ VOID ux_demo_device_hid_instance_activate(VOID *hid_instance)
 /********************************************************************/
 VOID ux_demo_device_hid_instance_deactivate(VOID *hid_instance)
 {
-    if (hid_instance == (VOID *)hid_consumer)
-        hid_consumer = UX_NULL;
+    if (hid_instance == (VOID *)hid_inout)
+        hid_inout = UX_NULL;
 }
 
 /********************************************************************/
@@ -425,6 +441,76 @@ UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_
     UX_PARAMETER_NOT_USED(hid_event);
 
     return UX_SUCCESS;
+}
+
+/********************************************************************/
+/**  ux_demo_hid_receiver_event_callback                            */
+/********************************************************************/
+VOID ux_demo_hid_receiver_event_callback(struct UX_SLAVE_CLASS_HID_STRUCT *hid_instance)
+{
+ULONG   length;
+UCHAR   *data;
+ULONG   size;
+UINT    status;
+UX_DEVICE_CLASS_HID_RECEIVED_EVENT hid_receive_event;
+UX_SLAVE_CLASS_HID_EVENT           hid_send_event;
+
+    while (1)
+    {
+
+        status = ux_device_class_hid_receiver_event_get(hid_instance, &hid_receive_event);
+
+        if (status == UX_ERROR)
+            return;
+
+        length = hid_receive_event.ux_device_class_hid_received_event_length;
+        data = hid_receive_event.ux_device_class_hid_received_event_data;
+
+        /* Send the received data back. */
+        while (length > 0)
+        {
+            ux_utility_memory_set(&hid_send_event, 0, sizeof(hid_send_event));
+
+            size = UX_MIN(length, UX_DEVICE_CLASS_HID_EVENT_BUFFER_LENGTH);
+
+            hid_send_event.ux_device_class_hid_event_length = size;
+
+            ux_utility_memory_copy(hid_send_event.ux_device_class_hid_event_buffer, data, size);
+
+            /* When the event buffer is full, retry after a delay. */
+            do
+            {
+              status = ux_device_class_hid_event_set(hid_instance, &hid_send_event);
+
+              if(status == UX_SUCCESS)
+                  break;
+
+              /* Sleep thread for 100ms.  */
+              ux_utility_delay_ms(MS_TO_TICK(100));
+
+            } while (1);
+
+            length -= size;
+            data += size;
+        }
+
+        ux_device_class_hid_receiver_event_free(hid_instance);
+    }
+}
+
+/********************************************************************/
+/**  ux_demo_device_hid_thread_entry: hid demo thread               */
+/********************************************************************/
+VOID ux_demo_device_hid_thread_entry(ULONG thread_input)
+{
+UCHAR           status;
+UCHAR           key;
+UX_SLAVE_CLASS_HID_EVENT device_hid_event;
+
+    UX_PARAMETER_NOT_USED(thread_input);
+
+    /* Register the USB device controllers available in this system.  */
+    usb_device_dcd_initialize(UX_NULL);
 }
 
 static VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code)
