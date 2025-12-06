@@ -36,6 +36,14 @@
 #include "ux_api.h"
 #include "ux_device_class_hid.h"
 
+#ifndef UX_STANDALONE
+#warning UX_STANDALONE must be define for this sample.
+#endif
+
+#if UX_PERIODIC_RATE != 1000
+#warning UX_PERIODIC_RATE should be 1000 for 1ms tick.
+#endif
+
 #if (UX_DEVICE_CLASS_HID_EVENT_BUFFER_LENGTH < 9)
 #error HID Keyboard event buffer length must be more then 8
 #endif

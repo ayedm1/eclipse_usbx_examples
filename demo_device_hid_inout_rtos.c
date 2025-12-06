@@ -27,7 +27,7 @@
 /**  Define constants                             */
 /**************************************************/
 #define DEMO_STACK_SIZE                         4*1024
-#define UX_DEVICE_MEMORY_STACK_SIZE             7*1024
+#define UX_DEVICE_MEMORY_STACK_SIZE             32*1024
 
 #define UX_DEMO_HID_DEVICE_VID                  0x070A
 #define UX_DEMO_HID_DEVICE_PID                  0x4027
@@ -54,7 +54,7 @@ VOID ux_demo_device_hid_instance_activate(VOID *hid_instance);
 VOID ux_demo_device_hid_instance_deactivate(VOID *hid_instance);
 UINT ux_demo_device_hid_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_CLASS_HID_EVENT *hid_event);
 UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_CLASS_HID_EVENT *hid_event);
-VOID ux_demo_hid_receiver_event_callback(struct UX_SLAVE_CLASS_HID_STRUCT *hid_instance);
+VOID ux_demo_device_hid_receiver_event_callback(UX_SLAVE_CLASS_HID *hid_instance);
 
 /**************************************************/
 /**  usbx device hid demo thread                  */
@@ -168,7 +168,7 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     0x05,                           /* bDescriptorType */
     UX_DEMO_HID_ENDPOINT_IN_ADDRESS,   /* bEndpointAddress */
                                     /* D7, Direction : 0x01 */
-                                    /* D3..0, Endpoint number : 2 */
+                                    /* D3..0, Endpoint number : 1 */
     0x03,                           /* bmAttributes */
                                         /* D1..0, Transfer Type : 0x3 : Interrupt */
                                         /* D3..2, Synchronization Type : 0x0 : No Synchronization */
@@ -182,7 +182,7 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     0x07,                           /* bLength */
     0x05,                           /* bDescriptorType */
     UX_DEMO_HID_ENDPOINT_OUT_ADDRESS,   /* bEndpointAddress */
-                                    /* D7, Direction : 0x01 */
+                                    /* D7, Direction : 0x80 */
                                     /* D3..0, Endpoint number : 2 */
     0x03,                           /* bmAttributes */
                                         /* D1..0, Transfer Type : 0x3 : Interrupt */
@@ -259,8 +259,8 @@ UCHAR ux_demo_device_framework_high_speed[] = {
     0x07,                           /* bLength */
     0x05,                           /* bDescriptorType */
     UX_DEMO_HID_ENDPOINT_IN_ADDRESS,   /* bEndpointAddress */
-                                    /* D7, Direction : 0x01 */
-                                    /* D3..0, Endpoint number : 2 */
+                                    /* D7, Direction : 0x80 */
+                                    /* D3..0, Endpoint number : 1 */
     0x03,                           /* bmAttributes */
                                         /* D1..0, Transfer Type : 0x3 : Interrupt */
                                         /* D3..2, Synchronization Type : 0x0 : No Synchronization */
@@ -383,7 +383,7 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_inout_parameter;
     hid_inout_parameter.ux_device_class_hid_parameter_receiver_initialize = ux_device_class_hid_receiver_initialize;
     hid_inout_parameter.ux_device_class_hid_parameter_receiver_event_max_number = 16;
     hid_inout_parameter.ux_device_class_hid_parameter_receiver_event_max_length = 64;
-    hid_inout_parameter.ux_device_class_hid_parameter_receiver_event_callback = ux_demo_hid_receiver_event_callback;
+    hid_inout_parameter.ux_device_class_hid_parameter_receiver_event_callback = ux_demo_device_hid_receiver_event_callback;
 
     /* Initialize the device storage class. The class is connected with interface 0 on configuration 1. */
     status = ux_device_stack_class_register(_ux_system_slave_class_hid_name, ux_device_class_hid_entry,
@@ -444,27 +444,27 @@ UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_
 }
 
 /********************************************************************/
-/**  ux_demo_hid_receiver_event_callback                            */
+/**  ux_demo_device_hid_receiver_event_callback                     */
 /********************************************************************/
-VOID ux_demo_hid_receiver_event_callback(struct UX_SLAVE_CLASS_HID_STRUCT *hid_instance)
+VOID ux_demo_device_hid_receiver_event_callback(UX_SLAVE_CLASS_HID *hid_instance)
 {
 ULONG   length;
 UCHAR   *data;
 ULONG   size;
 UINT    status;
-UX_DEVICE_CLASS_HID_RECEIVED_EVENT hid_receive_event;
 UX_SLAVE_CLASS_HID_EVENT           hid_send_event;
+UX_DEVICE_CLASS_HID_RECEIVED_EVENT hid_received_event;
 
     while (1)
     {
 
-        status = ux_device_class_hid_receiver_event_get(hid_instance, &hid_receive_event);
+        status = ux_device_class_hid_receiver_event_get(hid_inout, &hid_received_event);
 
-        if (status == UX_ERROR)
+        if(status != UX_SUCCESS)
             return;
 
-        length = hid_receive_event.ux_device_class_hid_received_event_length;
-        data = hid_receive_event.ux_device_class_hid_received_event_data;
+        length = hid_received_event.ux_device_class_hid_received_event_length;
+        data = hid_received_event.ux_device_class_hid_received_event_data;
 
         /* Send the received data back. */
         while (length > 0)
@@ -495,6 +495,7 @@ UX_SLAVE_CLASS_HID_EVENT           hid_send_event;
         }
 
         ux_device_class_hid_receiver_event_free(hid_instance);
+
     }
 }
 
@@ -503,10 +504,6 @@ UX_SLAVE_CLASS_HID_EVENT           hid_send_event;
 /********************************************************************/
 VOID ux_demo_device_hid_thread_entry(ULONG thread_input)
 {
-UCHAR           status;
-UCHAR           key;
-UX_SLAVE_CLASS_HID_EVENT device_hid_event;
-
     UX_PARAMETER_NOT_USED(thread_input);
 
     /* Register the USB device controllers available in this system.  */

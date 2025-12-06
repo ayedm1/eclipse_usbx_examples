@@ -83,7 +83,7 @@ ULONG num_lock_flag  = UX_FALSE;
 ULONG caps_lock_flag = UX_FALSE;
 
 static VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code);
-static void demo_delay_with_tasks_running(ULONG ms_wait);
+static VOID demo_delay_with_tasks_running(ULONG ms_wait);
 
 #ifndef EXTERNAL_MAIN
 extern int board_setup(void);
@@ -514,7 +514,7 @@ static UCHAR    key = 0x04;
 /********************************************************************/
 /**  demo_delay_with_tasks_running: delay with tasks               */
 /********************************************************************/
-static void demo_delay_with_tasks_running(ULONG ms_wait)
+static VOID demo_delay_with_tasks_running(ULONG ms_wait)
 {
 ULONG ticks;
 

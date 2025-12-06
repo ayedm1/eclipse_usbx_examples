@@ -12,6 +12,23 @@
 /**************************************************************************/
 /**************************************************************************/
 /**                                                                       */
+/** Overview                                                              */
+/**                                                                       */
+/**  This example works as a USB HID device. It will appear as a USB      */
+/**  custom device on PC. This application demo is running in rtos        */
+/**  mode.                                                                */
+/**                                                                       */
+/**  This sample show how to use usbx hid device class as custom device:  */
+/**  - Consumer: media + brightness control                               */
+/**  sample can be expanded to support other custom devices.              */
+/**                                                                       */
+/** Note                                                                  */
+/**                                                                       */
+/**  This demonstration is not optimized, to optimize application user    */
+/**  sould configuer related class flag in ux_user.h and adjust           */
+/**  DEMO_STACK_SIZE and UX_DEVICE_MEMORY_STACK_SIZE                      */
+/**                                                                       */
+/**                                                                       */
 /**  AUTHOR                                                               */
 /**                                                                       */
 /**   Mohamed AYED                                                        */
@@ -48,7 +65,6 @@
 
 #define UX_CONSUMER_BRIGHTNESS_DOWN             0x00
 #define UX_CONSUMER_BRIGHTNESS_UP               0x01
-
 #define UX_CONSUMER_BRIGHTNESS_DONE             0x10
 
 #define UX_CONSUMER_MEDIA_VOLUME_DOWN           0x00
