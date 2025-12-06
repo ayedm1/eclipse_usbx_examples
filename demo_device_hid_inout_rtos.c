@@ -54,7 +54,7 @@ VOID ux_demo_device_hid_instance_activate(VOID *hid_instance);
 VOID ux_demo_device_hid_instance_deactivate(VOID *hid_instance);
 UINT ux_demo_device_hid_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_CLASS_HID_EVENT *hid_event);
 UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_CLASS_HID_EVENT *hid_event);
-VOID ux_demo_hid_receiver_event_callback(struct UX_SLAVE_CLASS_HID_STRUCT *hid_instance);
+VOID ux_demo_device_hid_receiver_event_callback(UX_SLAVE_CLASS_HID *hid_instance);
 
 /**************************************************/
 /**  usbx device hid demo thread                  */
@@ -383,7 +383,7 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_inout_parameter;
     hid_inout_parameter.ux_device_class_hid_parameter_receiver_initialize = ux_device_class_hid_receiver_initialize;
     hid_inout_parameter.ux_device_class_hid_parameter_receiver_event_max_number = 16;
     hid_inout_parameter.ux_device_class_hid_parameter_receiver_event_max_length = 64;
-    hid_inout_parameter.ux_device_class_hid_parameter_receiver_event_callback = ux_demo_hid_receiver_event_callback;
+    hid_inout_parameter.ux_device_class_hid_parameter_receiver_event_callback = ux_demo_device_hid_receiver_event_callback;
 
     /* Initialize the device storage class. The class is connected with interface 0 on configuration 1. */
     status = ux_device_stack_class_register(_ux_system_slave_class_hid_name, ux_device_class_hid_entry,
@@ -444,57 +444,56 @@ UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_
 }
 
 /********************************************************************/
-/**  ux_demo_hid_receiver_event_callback                            */
+/**  ux_demo_device_hid_receiver_event_callback                     */
 /********************************************************************/
-VOID ux_demo_hid_receiver_event_callback(struct UX_SLAVE_CLASS_HID_STRUCT *hid_instance)
+VOID ux_demo_device_hid_receiver_event_callback(UX_SLAVE_CLASS_HID *hid_instance)
 {
 ULONG   length;
 UCHAR   *data;
 ULONG   size;
 UINT    status;
-UX_DEVICE_CLASS_HID_RECEIVED_EVENT hid_receive_event;
 UX_SLAVE_CLASS_HID_EVENT           hid_send_event;
+UX_DEVICE_CLASS_HID_RECEIVED_EVENT hid_received_event;
 
     while (1)
     {
 
-        status = ux_device_class_hid_receiver_event_get(hid_instance, &hid_receive_event);
-
-        if (status == UX_ERROR)
-            return;
-
-        length = hid_receive_event.ux_device_class_hid_received_event_length;
-        data = hid_receive_event.ux_device_class_hid_received_event_data;
-
-        /* Send the received data back. */
-        while (length > 0)
+        if(ux_device_class_hid_receiver_event_get(hid_custom, &hid_received_event) == UX_SUCCESS)
         {
-            ux_utility_memory_set(&hid_send_event, 0, sizeof(hid_send_event));
 
-            size = UX_MIN(length, UX_DEVICE_CLASS_HID_EVENT_BUFFER_LENGTH);
+            length = hid_received_event.ux_device_class_hid_received_event_length;
+            data = hid_received_event.ux_device_class_hid_received_event_data;
 
-            hid_send_event.ux_device_class_hid_event_length = size;
-
-            ux_utility_memory_copy(hid_send_event.ux_device_class_hid_event_buffer, data, size);
-
-            /* When the event buffer is full, retry after a delay. */
-            do
+            /* Send the received data back. */
+            while (length > 0)
             {
-              status = ux_device_class_hid_event_set(hid_instance, &hid_send_event);
+                ux_utility_memory_set(&hid_send_event, 0, sizeof(hid_send_event));
 
-              if(status == UX_SUCCESS)
-                  break;
+                size = UX_MIN(length, UX_DEVICE_CLASS_HID_EVENT_BUFFER_LENGTH);
 
-              /* Sleep thread for 100ms.  */
-              ux_utility_delay_ms(MS_TO_TICK(100));
+                hid_send_event.ux_device_class_hid_event_length = size;
 
-            } while (1);
+                ux_utility_memory_copy(hid_send_event.ux_device_class_hid_event_buffer, data, size);
 
-            length -= size;
-            data += size;
+                /* When the event buffer is full, retry after a delay. */
+                do
+                {
+                  status = ux_device_class_hid_event_set(hid_instance, &hid_send_event);
+
+                  if(status == UX_SUCCESS)
+                      break;
+
+                  /* Sleep thread for 100ms.  */
+                  ux_utility_delay_ms(MS_TO_TICK(100));
+
+                } while (1);
+
+                length -= size;
+                data += size;
+            }
+
+            ux_device_class_hid_receiver_event_free(hid_instance);
         }
-
-        ux_device_class_hid_receiver_event_free(hid_instance);
     }
 }
 
@@ -503,10 +502,6 @@ UX_SLAVE_CLASS_HID_EVENT           hid_send_event;
 /********************************************************************/
 VOID ux_demo_device_hid_thread_entry(ULONG thread_input)
 {
-UCHAR           status;
-UCHAR           key;
-UX_SLAVE_CLASS_HID_EVENT device_hid_event;
-
     UX_PARAMETER_NOT_USED(thread_input);
 
     /* Register the USB device controllers available in this system.  */
