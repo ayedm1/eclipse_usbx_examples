@@ -9,6 +9,7 @@
  * SPDX-License-Identifier: MIT
  **************************************************************************/
 
+
 /**************************************************************************/
 /**************************************************************************/
 /**                                                                       */
@@ -23,7 +24,7 @@
 /**                                                                       */
 /**  This demonstration is not optimized, to optimize application user    */
 /**  sould configuer related class flag in ux_user.h and adjust           */
-/**  DEMO_STACK_SIZE and UX_DEVICE_MEMORY_STACK_SIZE                      */
+/**  UX_DEVICE_MEMORY_STACK_SIZE                                          */
 /**                                                                       */
 /**                                                                       */
 /**  AUTHOR                                                               */
@@ -35,6 +36,10 @@
 
 #include "ux_api.h"
 #include "ux_device_class_hid.h"
+
+#ifndef UX_DEVICE_SIDE_ONLY
+#error UX_DEVICE_SIDE_ONLY must be defined
+#endif
 
 #ifndef UX_STANDALONE
 #warning UX_STANDALONE must be define for this sample.
@@ -55,8 +60,7 @@
 /**************************************************/
 /**  Define constants                             */
 /**************************************************/
-#define DEMO_STACK_SIZE                 4*1024
-#define UX_DEVICE_MEMORY_STACK_SIZE     10*1024
+#define UX_DEVICE_MEMORY_STACK_SIZE     (7*1024)
 
 #define UX_DEMO_HID_DEVICE_VID          0x090A
 #define UX_DEMO_HID_DEVICE_PID          0x4036
@@ -121,7 +125,13 @@ UX_SLAVE_CLASS_HID *hid;
 
 VOID ux_application_define(VOID);
 VOID ux_demo_device_hid_task(VOID);
+
 static CHAR ux_system_memory_pool[UX_DEVICE_MEMORY_STACK_SIZE];
+
+#ifndef EXTERNAL_MAIN
+extern int board_setup(void);
+#endif /* EXTERNAL_MAIN */
+extern int usb_device_dcd_initialize(void *param);
 
 /**************************************************/
 /**  usbx device hid keyboard                     */
@@ -129,8 +139,11 @@ static CHAR ux_system_memory_pool[UX_DEVICE_MEMORY_STACK_SIZE];
 ULONG num_lock_flag  = UX_FALSE;
 ULONG caps_lock_flag = UX_FALSE;
 
+/**************************************************/
+/**  usbx callback error                          */
+/**************************************************/
 static VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code);
-static void demo_delay_with_tasks_running(ULONG ms_wait);
+static VOID demo_delay_with_tasks_running(ULONG ms_wait);
 
 UCHAR hid_report[] = {
     // Report ID 1: Keyboard
@@ -247,7 +260,7 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     0x05,                           /* bDescriptorType */
     UX_DEMO_HID_ENDPOINT_ADDRESS,   /* bEndpointAddress */
                                     /* D7, Direction : 0x01 */
-                                    /* D3..0, Endpoint number : 2 */
+                                    /* D3..0, Endpoint number : 1 */
     0x03,                           /* bmAttributes */
                                         /* D1..0, Transfer Type : 0x3 : Interrupt */
                                         /* D3..2, Synchronization Type : 0x0 : No Synchronization */
@@ -324,7 +337,7 @@ UCHAR ux_demo_device_framework_high_speed[] = {
     0x05,                           /* bDescriptorType */
     UX_DEMO_HID_ENDPOINT_ADDRESS,   /* bEndpointAddress */
                                     /* D7, Direction : 0x01 */
-                                    /* D3..0, Endpoint number : 2 */
+                                    /* D3..0, Endpoint number : 1 */
     0x03,                           /* bmAttributes */
                                         /* D1..0, Transfer Type : 0x3 : Interrupt */
                                         /* D3..2, Synchronization Type : 0x0 : No Synchronization */
@@ -727,7 +740,7 @@ UX_SLAVE_CLASS_HID_EVENT device_hid_event;
 /********************************************************************/
 /**  demo_delay_with_tasks_running: delay with tasks               */
 /********************************************************************/
-static void demo_delay_with_tasks_running(ULONG ms_wait)
+static VOID demo_delay_with_tasks_running(ULONG ms_wait)
 {
 ULONG ticks;
 

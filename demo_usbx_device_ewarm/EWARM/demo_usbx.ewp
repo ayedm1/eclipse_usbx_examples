@@ -230,9 +230,9 @@
                     <state>USE_HAL_DRIVER</state>
                     <state>STM32H747xx</state>
                     <state>USE_PWR_DIRECT_SMPS_SUPPLY</state>
-                    <state>UX_INCLUDE_USER_DEFINE_FILE</state>
                     <state>EXTERNAL_MAIN</state>
                     <state>HID_MOUSE</state>
+                    <state>UX_DEVICE_SIDE_ONLY</state>
                 </option>
                 <option>
                     <name>CCPreprocFile</name>
@@ -1324,11 +1324,11 @@
                     <state>USE_HAL_DRIVER</state>
                     <state>STM32H747xx</state>
                     <state>USE_PWR_DIRECT_SMPS_SUPPLY</state>
-                    <state>UX_INCLUDE_USER_DEFINE_FILE</state>
                     <state>EXTERNAL_MAIN</state>
                     <state>UX_STANDALONE</state>
                     <state>UX_PERIODIC_RATE=1000</state>
                     <state>HID_MOUSE</state>
+                    <state>UX_DEVICE_SIDE_ONLY</state>
                 </option>
                 <option>
                     <name>CCPreprocFile</name>
@@ -4606,6 +4606,7 @@
                     <state>USE_PWR_DIRECT_SMPS_SUPPLY</state>
                     <state>EXTERNAL_MAIN</state>
                     <state>HID_MOUSE</state>
+                    <state>UX_DEVICE_SIDE_ONLY</state>
                     <state>UX_DEVICE_CLASS_HID_EVENT_BUFFER_LENGT== 9</state>
                 </option>
                 <option>
@@ -5702,6 +5703,7 @@
                     <state>UX_STANDALONE</state>
                     <state>UX_PERIODIC_RATE=1000</state>
                     <state>HID_MOUSE</state>
+                    <state>UX_DEVICE_SIDE_ONLY</state>
                     <state>UX_DEVICE_CLASS_HID_EVENT_BUFFER_LENGTH=9</state>
                 </option>
                 <option>
@@ -6793,6 +6795,7 @@
                     <state>USE_PWR_DIRECT_SMPS_SUPPLY</state>
                     <state>EXTERNAL_MAIN</state>
                     <state>HID_CONSUMER</state>
+                    <state>UX_DEVICE_SIDE_ONLY</state>
                 </option>
                 <option>
                     <name>CCPreprocFile</name>
@@ -7884,11 +7887,11 @@
                     <state>USE_HAL_DRIVER</state>
                     <state>STM32H747xx</state>
                     <state>USE_PWR_DIRECT_SMPS_SUPPLY</state>
-                    <state>UX_INCLUDE_USER_DEFINE_FILE</state>
                     <state>EXTERNAL_MAIN</state>
                     <state>UX_STANDALONE</state>
                     <state>UX_PERIODIC_RATE=1000</state>
                     <state>HID_CONSUMER</state>
+                    <state>UX_DEVICE_SIDE_ONLY</state>
                 </option>
                 <option>
                     <name>CCPreprocFile</name>
@@ -8979,6 +8982,7 @@
                     <state>USE_PWR_DIRECT_SMPS_SUPPLY</state>
                     <state>EXTERNAL_MAIN</state>
                     <state>HID_INOUT</state>
+                    <state>UX_DEVICE_SIDE_ONLY</state>
                     <state>UX_DEVICE_CLASS_HID_INTERRUPT_OUT_SUPPORT</state>
                     <state>UX_DEVICE_BIDIRECTIONAL_ENDPOINT_SUPPORT</state>
                 </option>
@@ -11396,7 +11400,58 @@
                 </file>
             </group>
             <group>
-                <name>hid class</name>
+                <name>device cdc acm class</name>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\inc\ux_device_class_cdc_acm.h</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_cdc_acm_activate.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_cdc_acm_bulkin_thread.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_cdc_acm_bulkout_thread.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_cdc_acm_control_request.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_cdc_acm_deactivate.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_cdc_acm_entry.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_cdc_acm_initialize.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_cdc_acm_ioctl.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_cdc_acm_read.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_cdc_acm_read_run.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_cdc_acm_tasks_run.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_cdc_acm_unitialize.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_cdc_acm_write.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_cdc_acm_write_run.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_cdc_acm_write_with_callback.c</name>
+                </file>
+            </group>
+            <group>
+                <name>device hid class</name>
                 <file>
                     <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\inc\ux_device_class_hid.h</name>
                 </file>

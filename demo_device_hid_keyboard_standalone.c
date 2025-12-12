@@ -13,6 +13,19 @@
 /**************************************************************************/
 /**************************************************************************/
 /**                                                                       */
+/** Overview                                                              */
+/**                                                                       */
+/**  This example works as a USB HID device. It will appear as a USB      */
+/**  keyboard  device on PC. This application demo is running in          */
+/**  standalone mode.                                                     */
+/**                                                                       */
+/** Note                                                                  */
+/**                                                                       */
+/**  This demonstration is not optimized, to optimize application user    */
+/**  sould configuer related class flag in ux_user.h and adjust           */
+/**  UX_DEVICE_MEMORY_STACK_SIZE                                          */
+/**                                                                       */
+/**                                                                       */
 /**  AUTHOR                                                               */
 /**                                                                       */
 /**   Mohamed AYED                                                        */
@@ -22,6 +35,18 @@
 
 #include "ux_api.h"
 #include "ux_device_class_hid.h"
+
+#ifndef UX_DEVICE_SIDE_ONLY
+#error UX_DEVICE_SIDE_ONLY must be defined
+#endif
+
+#ifndef UX_STANDALONE
+#warning UX_STANDALONE must be define for this sample.
+#endif
+
+#if UX_PERIODIC_RATE != 1000
+#warning UX_PERIODIC_RATE should be 1000 for 1ms tick.
+#endif
 
 #if (UX_DEVICE_CLASS_HID_EVENT_BUFFER_LENGTH < 8)
 #error HID Keyboard event buffer length must be more then 8
@@ -34,7 +59,7 @@
 /**************************************************/
 /**  Define constants                             */
 /**************************************************/
-#define UX_DEVICE_MEMORY_STACK_SIZE     7*1024
+#define UX_DEVICE_MEMORY_STACK_SIZE     (7*1024)
 
 #define UX_DEMO_HID_DEVICE_VID          0x070A
 #define UX_DEMO_HID_DEVICE_PID          0x4090
@@ -74,7 +99,6 @@ UX_SLAVE_CLASS_HID_EVENT device_hid_event;
 
 VOID ux_application_define(VOID);
 VOID ux_demo_device_hid_task(VOID);
-static CHAR ux_system_memory_pool[UX_DEVICE_MEMORY_STACK_SIZE];
 
 /**************************************************/
 /**  usbx device hid keyboard                     */
@@ -82,8 +106,13 @@ static CHAR ux_system_memory_pool[UX_DEVICE_MEMORY_STACK_SIZE];
 ULONG num_lock_flag  = UX_FALSE;
 ULONG caps_lock_flag = UX_FALSE;
 
+/**************************************************/
+/**  usbx callback error                          */
+/**************************************************/
 static VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code);
 static VOID demo_delay_with_tasks_running(ULONG ms_wait);
+
+static CHAR ux_system_memory_pool[UX_DEVICE_MEMORY_STACK_SIZE];
 
 #ifndef EXTERNAL_MAIN
 extern int board_setup(void);
@@ -275,7 +304,7 @@ UCHAR ux_demo_device_framework_high_speed[] = {
     0x05,                           /* bDescriptorType */
     UX_DEMO_HID_ENDPOINT_ADDRESS,   /* bEndpointAddress */
                                     /* D7, Direction : 0x01 */
-                                    /* D3..0, Endpoint number : 2 */
+                                    /* D3..0, Endpoint number : 1 */
     0x03,                           /* bmAttributes */
                                         /* D1..0, Transfer Type : 0x3 : Interrupt */
                                         /* D3..2, Synchronization Type : 0x0 : No Synchronization */

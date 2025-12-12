@@ -13,6 +13,19 @@
 /**************************************************************************/
 /**************************************************************************/
 /**                                                                       */
+/** Overview                                                              */
+/**                                                                       */
+/**  This example works as a USB HID device. It will appear as a USB      */
+/**  keyboard device on PC. This application demo is running in rtos      */
+/**  mode.                                                                */
+/**                                                                       */
+/** Note                                                                  */
+/**                                                                       */
+/**  This demonstration is not optimized, to optimize application user    */
+/**  sould configuer related class flag in ux_user.h and adjust           */
+/**  UX_DEVICE_MEMORY_STACK_SIZE                                          */
+/**                                                                       */
+/**                                                                       */
 /**  AUTHOR                                                               */
 /**                                                                       */
 /**   Mohamed AYED                                                        */
@@ -24,19 +37,23 @@
 #include "ux_api.h"
 #include "ux_device_class_hid.h"
 
+#ifndef UX_DEVICE_SIDE_ONLY
+#error UX_DEVICE_SIDE_ONLY must be defined
+#endif
+
 #if (UX_DEVICE_CLASS_HID_EVENT_BUFFER_LENGTH < 8)
 #error HID Keyboard event buffer length must be more then 8
 #endif
 
 
-/* Defined the mouse will act as boot device. */
+/* Defined the keyboard will act as boot device. */
 /* define DEMO_HID_BOOT_DEVICE */
 
 /**************************************************/
 /**  Define constants                             */
 /**************************************************/
-#define DEMO_STACK_SIZE                 4*1024
-#define UX_DEVICE_MEMORY_STACK_SIZE     7*1024
+#define UX_DEVICE_MEMORY_STACK_SIZE     (7*1024)
+#define UX_DEMO_THREAD_STACK_SIZE       (1*1024)
 
 #define UX_DEMO_HID_DEVICE_VID          0x070A
 #define UX_DEMO_HID_DEVICE_PID          0x4090
@@ -93,8 +110,14 @@ ULONG caps_lock_flag = UX_FALSE;
 /**  thread object                                */
 /**************************************************/
 static TX_THREAD ux_hid_thread;
+static ULONG ux_hid_thread_stack[UX_DEMO_THREAD_STACK_SIZE / sizeof(ULONG)];
 
+/**************************************************/
+/**  usbx callback error                          */
+/**************************************************/
 static VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code);
+
+static CHAR ux_system_memory_pool[UX_DEVICE_MEMORY_STACK_SIZE];
 
 #ifndef EXTERNAL_MAIN
 extern int board_setup(void);
@@ -209,7 +232,7 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     0x05,                           /* bDescriptorType */
     UX_DEMO_HID_ENDPOINT_ADDRESS,   /* bEndpointAddress */
                                     /* D7, Direction : 0x01 */
-                                    /* D3..0, Endpoint number : 2 */
+                                    /* D3..0, Endpoint number : 1 */
     0x03,                           /* bmAttributes */
                                         /* D1..0, Transfer Type : 0x3 : Interrupt */
                                         /* D3..2, Synchronization Type : 0x0 : No Synchronization */
@@ -286,7 +309,7 @@ UCHAR ux_demo_device_framework_high_speed[] = {
     0x05,                           /* bDescriptorType */
     UX_DEMO_HID_ENDPOINT_ADDRESS,   /* bEndpointAddress */
                                     /* D7, Direction : 0x01 */
-                                    /* D3..0, Endpoint number : 2 */
+                                    /* D3..0, Endpoint number : 1 */
     0x03,                           /* bmAttributes */
                                         /* D1..0, Transfer Type : 0x3 : Interrupt */
                                         /* D3..2, Synchronization Type : 0x0 : No Synchronization */
@@ -355,16 +378,15 @@ int main(void)
 
 VOID tx_application_define(VOID *first_unused_memory)
 {
-CHAR                            *stack_pointer;
 CHAR                            *memory_pointer;
 UINT                            status;
 UX_SLAVE_CLASS_HID_PARAMETER    hid_keyboard_parameter;
 
-    /* Initialize the free memory pointer.  */
-    stack_pointer =  (CHAR *) first_unused_memory;
 
-    /* Initialize the RAM disk memory. */
-    memory_pointer =  stack_pointer +  DEMO_STACK_SIZE;
+    UX_PARAMETER_NOT_USED(first_unused_memory);
+
+    /* Use static memory block.  */
+    memory_pointer = ux_system_memory_pool;
 
     /* Initialize USBX Memory */
     status = ux_system_initialize(memory_pointer, UX_DEVICE_MEMORY_STACK_SIZE, UX_NULL, 0);
@@ -400,8 +422,8 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_keyboard_parameter;
 
     /* Create the main demo thread.  */
     status = ux_utility_thread_create(&ux_hid_thread, "hid_usbx_app_thread_entry",
-                                      ux_demo_device_hid_thread_entry, 0, stack_pointer,
-                                      1024, 20, 20, 1, TX_AUTO_START);
+                                      ux_demo_device_hid_thread_entry, 0, ux_hid_thread_stack,
+                                      UX_DEMO_THREAD_STACK_SIZE, 20, 20, 1, TX_AUTO_START);
 
     if(status != UX_SUCCESS)
         return;
@@ -535,14 +557,14 @@ UX_SLAVE_CLASS_HID_EVENT device_hid_event;
           }
           else
           {
-            /* Sleep thread for 10ms.  */
-            ux_utility_delay_ms(MS_TO_TICK(10));
+              /* Sleep thread for 10ms.  */
+              ux_utility_delay_ms(MS_TO_TICK(10));
           }
       }
       else
       {
-        /* Sleep thread for 10ms.  */
-        ux_utility_delay_ms(MS_TO_TICK(10));
+          /* Sleep thread for 10ms.  */
+          ux_utility_delay_ms(MS_TO_TICK(10));
       }
     }
 }

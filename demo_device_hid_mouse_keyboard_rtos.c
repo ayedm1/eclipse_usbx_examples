@@ -9,6 +9,7 @@
  * SPDX-License-Identifier: MIT
  **************************************************************************/
 
+
 /**************************************************************************/
 /**************************************************************************/
 /**                                                                       */
@@ -23,7 +24,7 @@
 /**                                                                       */
 /**  This demonstration is not optimized, to optimize application user    */
 /**  sould configuer related class flag in ux_user.h and adjust           */
-/**  DEMO_STACK_SIZE and UX_DEVICE_MEMORY_STACK_SIZE                      */
+/**  UX_DEVICE_MEMORY_STACK_SIZE                                          */
 /**                                                                       */
 /**                                                                       */
 /**  AUTHOR                                                               */
@@ -37,6 +38,10 @@
 #include "ux_api.h"
 #include "ux_device_class_hid.h"
 
+#ifndef UX_DEVICE_SIDE_ONLY
+#error UX_DEVICE_SIDE_ONLY must be defined
+#endif
+
 #if (UX_DEVICE_CLASS_HID_EVENT_BUFFER_LENGTH < 9)
 #error HID Keyboard event buffer length must be more then 8
 #endif
@@ -48,8 +53,8 @@
 /**************************************************/
 /**  Define constants                             */
 /**************************************************/
-#define DEMO_STACK_SIZE                 4*1024
-#define UX_DEVICE_MEMORY_STACK_SIZE     10*1024
+#define UX_DEVICE_MEMORY_STACK_SIZE     (7*1024)
+#define UX_DEMO_THREAD_STACK_SIZE       (1*1024)
 
 #define UX_DEMO_HID_DEVICE_VID          0x090A
 #define UX_DEMO_HID_DEVICE_PID          0x4036
@@ -124,6 +129,7 @@ UX_SLAVE_CLASS_HID *hid;
 /**  thread object                                */
 /**************************************************/
 static TX_THREAD ux_hid_thread;
+static ULONG ux_hid_thread_stack[UX_DEMO_THREAD_STACK_SIZE / sizeof(ULONG)];
 
 /**************************************************/
 /**  usbx device hid keyboard                     */
@@ -135,6 +141,13 @@ ULONG caps_lock_flag = UX_FALSE;
 /**  usbx callback error                          */
 /**************************************************/
 VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code);
+
+static CHAR ux_system_memory_pool[UX_DEVICE_MEMORY_STACK_SIZE];
+
+#ifndef EXTERNAL_MAIN
+extern int board_setup(void);
+#endif /* EXTERNAL_MAIN */
+extern int usb_device_dcd_initialize(void *param);
 
 UCHAR hid_report[] = {
     // Report ID 1: Keyboard
@@ -251,7 +264,7 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     0x05,                           /* bDescriptorType */
     UX_DEMO_HID_ENDPOINT_ADDRESS,   /* bEndpointAddress */
                                     /* D7, Direction : 0x01 */
-                                    /* D3..0, Endpoint number : 2 */
+                                    /* D3..0, Endpoint number : 1 */
     0x03,                           /* bmAttributes */
                                         /* D1..0, Transfer Type : 0x3 : Interrupt */
                                         /* D3..2, Synchronization Type : 0x0 : No Synchronization */
@@ -328,7 +341,7 @@ UCHAR ux_demo_device_framework_high_speed[] = {
     0x05,                           /* bDescriptorType */
     UX_DEMO_HID_ENDPOINT_ADDRESS,   /* bEndpointAddress */
                                     /* D7, Direction : 0x01 */
-                                    /* D3..0, Endpoint number : 2 */
+                                    /* D3..0, Endpoint number : 1 */
     0x03,                           /* bmAttributes */
                                         /* D1..0, Transfer Type : 0x3 : Interrupt */
                                         /* D3..2, Synchronization Type : 0x0 : No Synchronization */
@@ -384,10 +397,6 @@ UCHAR ux_demo_language_id_framework[] = {
     0x09, 0x04
 };
 
-#ifndef EXTERNAL_MAIN
-extern int board_setup(void);
-#endif /* EXTERNAL_MAIN */
-extern int usb_device_dcd_initialize(void *param);
 
 #ifndef EXTERNAL_MAIN
 int main(void)
@@ -402,16 +411,15 @@ int main(void)
 
 VOID tx_application_define(VOID *first_unused_memory)
 {
-CHAR                            *stack_pointer;
 CHAR                            *memory_pointer;
 UINT                            status;
 UX_SLAVE_CLASS_HID_PARAMETER    hid_parameter;
 
-    /* Initialize the free memory pointer.  */
-    stack_pointer =  (CHAR *) first_unused_memory;
 
-    /* Initialize the RAM disk memory. */
-    memory_pointer =  stack_pointer +  DEMO_STACK_SIZE;
+    UX_PARAMETER_NOT_USED(first_unused_memory);
+
+    /* Use static memory block.  */
+    memory_pointer = ux_system_memory_pool;
 
     /* Initialize USBX Memory */
     status = ux_system_initialize(memory_pointer, UX_DEVICE_MEMORY_STACK_SIZE, UX_NULL, 0);
@@ -448,8 +456,8 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_parameter;
 
     /* Create the main demo thread.  */
     status = ux_utility_thread_create(&ux_hid_thread, "hid_usbx_app_thread_entry",
-                                      ux_demo_device_hid_thread_entry, 0, stack_pointer,
-                                      1024, 20, 20, 1, TX_AUTO_START);
+                                      ux_demo_device_hid_thread_entry, 0, ux_hid_thread_stack,
+                                      UX_DEMO_THREAD_STACK_SIZE, 20, 20, 1, TX_AUTO_START);
 
     if(status != UX_SUCCESS)
         return;
