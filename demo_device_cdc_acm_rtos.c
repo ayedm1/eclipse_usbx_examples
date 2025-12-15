@@ -48,15 +48,16 @@
 #define UX_DEMO_CDC_ACM_DEVICE_VID      0x090A
 #define UX_DEMO_CDC_ACM_DEVICE_PID      0x4036
 
-#define UX_DEMO_MAX_EP0_SIZE                    0x40U
-#define UX_DEMO_CDC_ACM_CONFIG_DESC_SIZE        0x22U
-#define UX_DEMO_BCD_USB                         0x0200
+#define UX_DEMO_MAX_EP0_SIZE            0x40U
+#define UX_DEMO_CONFIG_DESC_SIZE        0x22U
+#define UX_DEMO_BCD_USB                 0x0200
 
 /**************************************************/
 /**  usbx device cdc acm demo callbacks           */
 /**************************************************/
 VOID ux_demo_device_cdc_acm_instance_activate(VOID *cdc_acm_instance);
 VOID ux_demo_device_cdc_acm_instance_deactivate(VOID *cdc_acm_instance);
+VOID ux_demo_device_cdc_acm_instance_parameter_chage(VOID *cdc_acm_instance);
 
 /**************************************************/
 /**  usbx application initialization with RTOS    */
@@ -105,13 +106,13 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     /* Device descriptor */
     0x12,                       /* bLength */
     0x01,                       /* bDescriptorType */
-    0x10, 0x01,                 /* bcdUSB : 0x0110 : USB 1.1 */
+    UX_W0(UX_DEMO_BCD_USB), UX_W1(UX_DEMO_BCD_USB), /* bcdUSB */
     0x02,                       /* bDeviceClass : 0x02 : CDC-Control */
     0x02,                       /* bDeviceSubClass : 0x02 */
     0x00,                       /* bDeviceProtocol : 0x00 : Reset */
-    0x08,                       /* bMaxPacketSize0 : 8 : 8 */
-    0xC9, 0x1F,                 /* idVendor : 0x1FC9 */
-    0x94, 0x00,                 /* idProduct */
+    UX_DEMO_MAX_EP0_SIZE,       /* bMaxPacketSize0 */
+    UX_W0(UX_DEMO_CDC_ACM_DEVICE_VID), UX_W1(UX_DEMO_CDC_ACM_DEVICE_VID), /* idVendor : ... */
+    UX_W0(UX_DEMO_CDC_ACM_DEVICE_PID), UX_W1(UX_DEMO_CDC_ACM_DEVICE_PID), /* idProduct */
     0x00, 0x01,                 /* bcdDevice */
     0x01,                       /* iManufacturer */
     0x02,                       /* iProduct */
@@ -121,7 +122,7 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     /* Configuration descriptor, total 75 */
     0x09,                       /* bLength */
     0x02,                       /* bDescriptorType */
-    0x4b, 0x00,                 /* wTotalLength : 75 */
+    UX_W0(UX_DEMO_CONFIG_DESC_SIZE), UX_W1(UX_DEMO_CONFIG_DESC_SIZE), /* wTotalLength */
     0x02,                       /* bNumInterfaces */
     0x01,                       /* bConfigurationValue */
     0x00,                       /* iConfiguration */
@@ -171,10 +172,15 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     0x24,                       /* bDescriptorType */
     0x02,                       /* bDescriptorSubtype */
     0x0f,                       /* bmCapabilities */
-                    /* D3, notification Network_Connection : 0x1 : Supported */
-                    /* D2, request Send_Break : 0x1 : Supported */
-                    /* D1, request Set_Line_Coding Set_Control_Line_State Get_Line_Coding and notification Serial_State : 0x1 : Supported */
-                    /* D0, request Set_Comm_Feature Clear_Comm_Feature and Get_Comm_Feature : 0x1 : Supported */
+                                    /* D3, notification Network_Connection : 0x1 : Supported */
+                                    /* D2, request Send_Break : 0x1 : Supported */
+                                    /* D1, request Set_Line_Coding
+                                                   Set_Control_Line_State
+                                                   Get_Line_Coding and
+                                                   notification Serial_State : 0x1 : Supported */
+                                    /* D0, request Set_Comm_Feature
+                                                   Clear_Comm_Feature
+                                                   Get_Comm_Feature : 0x1 : Supported */
 
     /* CDC Union Functional Descriptor (1 slave interface) */
     0x05,                       /* bLength */
@@ -322,10 +328,15 @@ UCHAR ux_demo_device_framework_high_speed[] = {
     0x24,                       /* bDescriptorType */
     0x02,                       /* bDescriptorSubtype */
     0x06,                       /* bmCapabilities */
-                    /* D3, notification Network_Connection : 0x0 : Not supported */
-                    /* D2, request Send_Break : 0x1 : Supported */
-                    /* D1, request Set_Line_Coding Set_Control_Line_State Get_Line_Coding and notification Serial_State : 0x1 : Supported */
-                    /* D0, request Set_Comm_Feature Clear_Comm_Feature and Get_Comm_Feature : 0x0 : Not supported */
+                                    /* D3, notification Network_Connection : 0x0 : Not supported */
+                                    /* D2, request Send_Break : 0x1 : Supported */
+                                    /* D1, request Set_Line_Coding
+                                                   Set_Control_Line_State
+                                                   Get_Line_Coding
+                                                   notification Serial_State : 0x1 : Supported */
+                                    /* D0, request Set_Comm_Feature
+                                                   Clear_Comm_Feature
+                                                   Get_Comm_Feature : 0x0 : Not supported */
 
     /* CDC Union Functional Descriptor (1 slave interface) */
     0x05,                       /* bLength */
@@ -475,8 +486,9 @@ UX_SLAVE_CLASS_CDC_ACM_PARAMETER   cdc_acm_parameter;
         return;
 
     /* Initialize the cdc acm class parameters for the device */
-    cdc_acm_parameter.ux_slave_class_cdc_acm_instance_activate         = ux_demo_device_cdc_acm_instance_activate;
-    cdc_acm_parameter.ux_slave_class_cdc_acm_instance_deactivate       = ux_demo_device_cdc_acm_instance_deactivate;
+    cdc_acm_parameter.ux_slave_class_cdc_acm_instance_activate = ux_demo_device_cdc_acm_instance_activate;
+    cdc_acm_parameter.ux_slave_class_cdc_acm_instance_deactivate = ux_demo_device_cdc_acm_instance_deactivate;
+    cdc_acm_parameter.ux_slave_class_cdc_acm_parameter_change = ux_demo_device_cdc_acm_instance_parameter_chage;
 
     /* Initialize the device cdc acm class. The class is connected with interface 0 on configuration 1. */
     status = ux_device_stack_class_register(_ux_system_slave_class_cdc_acm_name, ux_device_class_cdc_acm_entry,
@@ -515,12 +527,24 @@ VOID ux_demo_device_cdc_acm_instance_deactivate(VOID *cdc_acm_instance)
         cdc_acm = UX_NULL;
 }
 
+/********************************************************************/
+/**  ux_demo_device_cdc_acm_instance_parameter_chage                */
+/********************************************************************/
+VOID ux_demo_device_cdc_acm_instance_parameter_chage(VOID *cdc_acm_instance)
+{
+
+}
 
 /********************************************************************/
 /**  ux_demo_device_cdc_acm_thread_entry: cdc acm thread            */
 /********************************************************************/
 VOID ux_demo_device_cdc_acm_thread_entry(ULONG thread_input)
 {
+
+    UX_PARAMETER_NOT_USED(thread_input);
+
+    /* Register the USB device controllers available in this system.  */
+    usb_device_dcd_initialize(UX_NULL);
 
 }
 
