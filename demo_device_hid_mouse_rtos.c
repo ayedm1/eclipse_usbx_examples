@@ -22,7 +22,7 @@
 /** Note                                                                  */
 /**                                                                       */
 /**  This demonstration is not optimized, to optimize application user    */
-/**  sould configuer related class flag in ux_user.h and adjust           */
+/**  should configure related class flag in ux_user.h and adjust          */
 /**  UX_DEVICE_MEMORY_STACK_SIZE                                          */
 /**                                                                       */
 /**                                                                       */
@@ -75,10 +75,10 @@
 #endif
 
 #ifdef UX_DEMO_MOUSE_ABSOLUTE
-#define UX_DEMO_HID_MOUSE_CURSOR_MOVE           350
+#define UX_DEMO_HID_MOUSE_CURSOR_MOVE   350
 #else /* UX_DEMO_MOUSE_ABSOLUTE */
-#define UX_DEMO_HID_MOUSE_CURSOR_MOVE           3
-#define UX_DEMO_HID_MOUSE_CURSOR_MOVE_N         100
+#define UX_DEMO_HID_MOUSE_CURSOR_MOVE   3
+#define UX_DEMO_HID_MOUSE_CURSOR_MOVE_N 100
 #endif /* UX_DEMO_MOUSE_ABSOLUTE */
 
 #define UX_MOUSE_CURSOR_MOVE_RIGHT      0x00
@@ -107,8 +107,6 @@ VOID ux_demo_device_hid_thread_entry(ULONG thread_input);
 /**************************************************/
 /**  usbx device hid demo mouse                   */
 /**************************************************/
-UINT ux_demo_hid_mouse_buttons(UX_SLAVE_CLASS_HID *device_hid);
-UINT ux_demo_hid_mouse_scroll_wheel(UX_SLAVE_CLASS_HID *device_hid);
 #ifndef UX_DEMO_MOUSE_ABSOLUTE
 UINT ux_demo_hid_mouse_cursor_move(UX_SLAVE_CLASS_HID *device_hid);
 #else
@@ -452,7 +450,7 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_mouse_parameter;
     if(status != UX_SUCCESS)
         return;
 
-    /* error callback */
+    /* Register error callback. */
     ux_utility_error_callback_register(ux_demo_error_callback);
 }
 
@@ -644,7 +642,7 @@ static ULONG                mouse_x;
 static ULONG                mouse_y;
 static UCHAR                mouse_move_dir;
 
-    /* Sleep thread for 10ms.  */
+    /* Sleep thread for 100ms.  */
     ux_utility_delay_ms(MS_TO_TICK(100));
 
     /* Initialize mouse event.  */
