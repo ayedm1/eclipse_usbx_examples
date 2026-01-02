@@ -22,7 +22,7 @@
 /** Note                                                                  */
 /**                                                                       */
 /**  This demonstration is not optimized, to optimize application user    */
-/**  sould configuer related class flag in ux_user.h and adjust           */
+/**  should configure related class flag in ux_user.h and adjust          */
 /**  UX_DEVICE_MEMORY_STACK_SIZE                                          */
 /**                                                                       */
 /**                                                                       */
@@ -81,10 +81,10 @@
 #endif
 
 #ifdef UX_DEMO_MOUSE_ABSOLUTE
-#define UX_DEMO_HID_MOUSE_CURSOR_MOVE           350
+#define UX_DEMO_HID_MOUSE_CURSOR_MOVE   350
 #else /* UX_DEMO_MOUSE_ABSOLUTE */
-#define UX_DEMO_HID_MOUSE_CURSOR_MOVE           3
-#define UX_DEMO_HID_MOUSE_CURSOR_MOVE_N         100
+#define UX_DEMO_HID_MOUSE_CURSOR_MOVE   3
+#define UX_DEMO_HID_MOUSE_CURSOR_MOVE_N 100
 #endif /* UX_DEMO_MOUSE_ABSOLUTE */
 
 #define UX_MOUSE_CURSOR_MOVE_RIGHT      0x00
@@ -103,8 +103,6 @@ UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_
 /**************************************************/
 /**  usbx device hid demo mouse                   */
 /**************************************************/
-UINT ux_demo_hid_mouse_buttons(UX_SLAVE_CLASS_HID *device_hid);
-UINT ux_demo_hid_mouse_scroll_wheel(UX_SLAVE_CLASS_HID *device_hid);
 #ifndef UX_DEMO_MOUSE_ABSOLUTE
 UINT ux_demo_hid_mouse_cursor_move(UX_SLAVE_CLASS_HID *device_hid);
 #else
@@ -120,6 +118,7 @@ UX_SLAVE_CLASS_HID *hid_mouse;
 /**  usbx callback error                          */
 /**************************************************/
 static VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code);
+static VOID demo_delay_with_tasks_running(ULONG ms_wait);
 
 VOID ux_application_define(VOID);
 VOID ux_demo_device_hid_task(VOID);
@@ -522,8 +521,8 @@ static UCHAR                mouse_y;
 static UCHAR                mouse_move_dir;
 static UCHAR                mouse_move_count;
 
-    /* Sleep for 10ms.  */
-    ux_utility_delay_ms(MS_TO_TICK(10));
+    /* Delay for 10ms.  */
+    demo_delay_with_tasks_running(10);
 
     /* Initialize mouse event.  */
     device_hid_event.ux_device_class_hid_event_report_id = 0;
@@ -627,8 +626,8 @@ static ULONG                mouse_x;
 static ULONG                mouse_y;
 static UCHAR                mouse_move_dir;
 
-    /* Sleep for 10ms.  */
-    ux_utility_delay_ms(MS_TO_TICK(100));
+    /* Delay for 100ms.  */
+    demo_delay_with_tasks_running(100);
 
     /* Initialize mouse event.  */
     device_hid_event.ux_device_class_hid_event_report_id = 0;
@@ -711,6 +710,23 @@ static UCHAR                mouse_move_dir;
     return mouse_move_dir;
 }
 #endif /* UX_DEMO_MOUSE_ABSOLUTE */
+
+/********************************************************************/
+/**  demo_delay_with_tasks_running: delay with tasks               */
+/********************************************************************/
+static VOID demo_delay_with_tasks_running(ULONG ms_wait)
+{
+ULONG ticks;
+
+    /* Get current time.  */
+    ticks = ux_utility_time_get();
+
+    /* Wait until timeout.  */
+    while(ux_utility_time_elapsed(ticks, ux_utility_time_get()) < UX_MS_TO_TICK_NON_ZERO(ms_wait))
+    {
+        ux_system_tasks_run();
+    }
+}
 
 static VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code)
 {
