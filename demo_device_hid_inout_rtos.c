@@ -20,7 +20,6 @@
 /**************************************************************************/
 /**************************************************************************/
 
-#include "tx_api.h"
 #include "ux_api.h"
 #include "ux_device_class_hid.h"
 
@@ -29,11 +28,11 @@
 #endif
 
 #ifndef UX_DEVICE_CLASS_HID_INTERRUPT_OUT_SUPPORT
-#erorr UX_DEVICE_CLASS_HID_INTERRUPT_OUT_SUPPORT must be defined for this sample
+#error  UX_DEVICE_CLASS_HID_INTERRUPT_OUT_SUPPORT must be defined for this sample
 #endif
 
 #ifndef UX_DEVICE_BIDIRECTIONAL_ENDPOINT_SUPPORT
-#erorr UX_DEVICE_BIDIRECTIONAL_ENDPOINT_SUPPORT must be defined for this sample
+#error  UX_DEVICE_BIDIRECTIONAL_ENDPOINT_SUPPORT must be defined for this sample
 #endif
 
 /**************************************************/
@@ -43,7 +42,7 @@
 #define UX_DEMO_THREAD_STACK_SIZE               (1*1024)
 
 #define UX_DEMO_HID_DEVICE_VID                  0x070A
-#define UX_DEMO_HID_DEVICE_PID                  0x4027
+#define UX_DEMO_HID_DEVICE_PID                  0x4028
 
 #define UX_DEMO_MAX_EP0_SIZE                    0x40U
 #define UX_DEMO_HID_CONFIG_DESC_SIZE            0x29U
@@ -87,7 +86,7 @@ UX_SLAVE_CLASS_HID *hid_inout;
 /**************************************************/
 /**  thread object                                */
 /**************************************************/
-static TX_THREAD ux_hid_thread;
+static UX_THREAD ux_hid_thread;
 static ULONG ux_hid_thread_stack[UX_DEMO_THREAD_STACK_SIZE / sizeof(ULONG)];
 
 
@@ -109,23 +108,26 @@ extern int usb_device_dcd_initialize(void *param);
 /**************************************************/
 UCHAR hid_inout_report[] = {
 
-    0x06, 0x00, 0xFF, // USAGE_PAGE (Vendor Defined Page 1)
-    0x09, 0x01,       // USAGE (Vendor Usage 1)
-    0xA1, 0x01,       // COLLECTION (Application)
+    0x06, 0x00, 0xff,     // Usage Page(Undefined )
+    0x09, 0x01,           // USAGE (Undefined)
+    0xa1, 0x01,           // COLLECTION (Application)
 
-    // Input Report (Device to Host)
-    0x09, 0x02,       //   USAGE (Vendor Usage 2)
-    0x75, 0x08,       //   REPORT_SIZE (8 bits per report)
-    0x95, 0x40,       //   REPORT_COUNT (64 event at a time)
-    0x81, 0x02,       //   INPUT (Data,Var,Abs)
+    0x15, 0x00,           // LOGICAL_MINIMUM (0)
+    0x26, 0xff, 0x00,     // LOGICAL_MAXIMUM (255)
+    0x75, 0x08,           // REPORT_SIZE (8)
+    0x95, 0x40,           // REPORT_COUNT (64)
 
-    // Output Report (Host to Device)
-    0x09, 0x03,       //   USAGE (Vendor Usage 3)
-    0x75, 0x08,       //   REPORT_SIZE (8 bits per report)
-    0x95, 0x40,       //   REPORT_COUNT (64 event at a time)
-    0x91, 0x02,       //   OUTPUT (Data,Var,Abs)
+    0x09, 0x01,           // USAGE (Undefined)
+    0x81, 0x02,           // INPUT (Data,Var,Abs)
+    0x95, 0x40,           // REPORT_COUNT (64)
 
-    0xC0U             // END COLLECTION
+    0x09, 0x01,           // USAGE (Undefined)
+    0x91, 0x02,           // OUTPUT (Data,Var,Abs)
+    0x95, 0x01,           // REPORT_COUNT (1)
+
+    0x09, 0x01,           // USAGE (Undefined)
+    0xb1, 0x02,           // FEATURE (Data,Var,Abs)
+    0xC0                  // END_COLLECTION
 };
 
 #define UX_HID_INOUT_REPORT_LENGTH (sizeof(hid_inout_report)/sizeof(hid_inout_report[0]))
@@ -410,7 +412,7 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_inout_parameter;
     /* Create the main demo thread.  */
     status = ux_utility_thread_create(&ux_hid_thread, "hid_usbx_app_thread_entry",
                                       ux_demo_device_hid_thread_entry, 0, ux_hid_thread_stack,
-                                      UX_DEMO_THREAD_STACK_SIZE, 20, 20, 1, TX_AUTO_START);
+                                      UX_DEMO_THREAD_STACK_SIZE, 20, 20, 1, UX_AUTO_START);
 
     if(status != UX_SUCCESS)
         return;

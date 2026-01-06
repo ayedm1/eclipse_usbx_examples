@@ -39,7 +39,11 @@
 #endif
 
 #ifndef UX_DEVICE_BIDIRECTIONAL_ENDPOINT_SUPPORT
-#error  UX_DEVICE_BIDIRECTIONAL_ENDPOINT_SUPPORT must be defined for this sample
+#error UX_DEVICE_BIDIRECTIONAL_ENDPOINT_SUPPORT must be defined for this sample
+#endif
+
+#if UX_MAX_SLAVE_LUN !=2
+#error UX_MAX_SLAVE_LUN must be 2 for this sample
 #endif
 
 #define BUILD_FILE_SYSTEM
@@ -47,7 +51,7 @@
 /**************************************************/
 /**  Define constants                             */
 /**************************************************/
-#define UX_DEVICE_MEMORY_STACK_SIZE             (7*1024)
+#define UX_DEVICE_MEMORY_STACK_SIZE             (10*1024)
 #define UX_DEMO_THREAD_STACK_SIZE               (1*1024)
 
 #define UX_DEMO_STORAGE_DEVICE_VID              0x070A
@@ -102,7 +106,8 @@ VOID ux_demo_device_storage_thread_entry(ULONG thread_input);
 /* Write Caching support.  */
 #define RAM_DISK_WRITE_CACHING  UX_FALSE
 
-UCHAR ram_disk_memory[RAM_DISK_SIZE];
+UCHAR ram_disk1_memory[RAM_DISK_SIZE];
+UCHAR ram_disk2_memory[RAM_DISK_SIZE];
 static VOID usbx_storage_disk_init(VOID);
 
 /**************************************************/
@@ -393,6 +398,11 @@ static const UCHAR sector_8[] = {
 	0x00, 0xB5, 0x25, 0x92, 0x81, 0x52, 0x81, 0x52, 0x00, 0x00, 0x26, 0x92,
 	0x81, 0x52, 0x02,
 };
+
+/* Per-LUN volume labels (boot sector offset 0x2B, 11 bytes). */
+static const UCHAR volume_label_lun1[11] = { 'T','E','S','T','1',' ',' ',' ',' ',' ',' ' };
+static const UCHAR volume_label_lun2[11] = { 'T','E','S','T','2',' ',' ',' ',' ',' ',' ' };
+
 #endif /* BUILD_FILE_SYSTEM */
 
 #ifndef EXTERNAL_MAIN
@@ -437,10 +447,22 @@ UX_SLAVE_CLASS_STORAGE_LUN         *lun;
     /* Store the number of LUN in this device storage instance.  */
     storage_parameter.ux_slave_class_storage_instance_activate = ux_demo_device_storage_instance_activate;
     storage_parameter.ux_slave_class_storage_instance_deactivate = ux_demo_device_storage_instance_deactivate;
-    storage_parameter.ux_slave_class_storage_parameter_number_lun = 1;
+    storage_parameter.ux_slave_class_storage_parameter_number_lun = 2;
 
      /* Initialize the storage class parameters for reading/writing to the Flash Disk.  */
     lun = &storage_parameter.ux_slave_class_storage_parameter_lun[0];
+    lun -> ux_slave_class_storage_media_last_lba = RAM_DISK_LAST_LBA;
+    lun -> ux_slave_class_storage_media_block_length = RAM_DISK_BLOCK_LENGTH;
+    lun -> ux_slave_class_storage_media_type = 0;
+    lun -> ux_slave_class_storage_media_removable_flag = 0x80;
+    lun -> ux_slave_class_storage_media_read_only_flag = UX_FALSE;
+    lun -> ux_slave_class_storage_media_read = ux_demo_device_storage_media_read;
+    lun -> ux_slave_class_storage_media_write = ux_demo_device_storage_media_write;
+    lun -> ux_slave_class_storage_media_status = ux_demo_device_storage_media_status;
+    lun -> ux_slave_class_storage_media_flush = RAM_DISK_WRITE_CACHING ? ux_demo_device_storage_media_flush : UX_NULL;
+
+    /* LUN1 configuration */
+    lun = &storage_parameter.ux_slave_class_storage_parameter_lun[1];
     lun -> ux_slave_class_storage_media_last_lba = RAM_DISK_LAST_LBA;
     lun -> ux_slave_class_storage_media_block_length = RAM_DISK_BLOCK_LENGTH;
     lun -> ux_slave_class_storage_media_type = 0;
@@ -494,13 +516,21 @@ VOID ux_demo_device_storage_instance_deactivate(VOID *storage_instance)
 UINT ux_demo_device_storage_media_read(VOID *storage, ULONG lun, UCHAR *data_pointer, ULONG number_blocks,
                                        ULONG lba, ULONG *media_status)
 {
-UINT status = UX_SUCCESS;
+UINT status             = UX_SUCCESS;
+UCHAR *memory_pointer   = UX_NULL;
 
     UX_PARAMETER_NOT_USED(storage);
     UX_PARAMETER_NOT_USED(media_status);
 
+    if (lun == 0)
+        memory_pointer = ram_disk1_memory;
+    else if (lun == 1)
+        memory_pointer = ram_disk2_memory;
+    else
+        return UX_ERROR;
+
     ux_utility_memory_copy(data_pointer,
-                           ram_disk_memory + lba * RAM_DISK_BLOCK_LENGTH,
+                           memory_pointer + lba * RAM_DISK_BLOCK_LENGTH,
                            number_blocks * RAM_DISK_BLOCK_LENGTH);
 
     return(status);
@@ -512,12 +542,20 @@ UINT status = UX_SUCCESS;
 UINT ux_demo_device_storage_media_write(VOID *storage, ULONG lun, UCHAR *data_pointer, ULONG number_blocks,
                                         ULONG lba, ULONG *media_status)
 {
-UINT status =  UX_SUCCESS;
+UINT status             = UX_SUCCESS;
+UCHAR *memory_pointer   = UX_NULL;
 
     UX_PARAMETER_NOT_USED(storage);
     UX_PARAMETER_NOT_USED(media_status);
 
-    ux_utility_memory_copy(ram_disk_memory + lba * RAM_DISK_BLOCK_LENGTH,
+    if (lun == 0)
+        memory_pointer = ram_disk1_memory;
+    else if (lun == 1)
+        memory_pointer = ram_disk2_memory;
+    else
+        return UX_ERROR;
+
+    ux_utility_memory_copy(memory_pointer + lba * RAM_DISK_BLOCK_LENGTH,
                            data_pointer,
                            number_blocks * RAM_DISK_BLOCK_LENGTH);
 
@@ -570,27 +608,50 @@ VOID ux_demo_device_storage_thread_entry(ULONG thread_input)
 /********************************************************************/
 static VOID usbx_storage_disk_init(VOID)
 {
-    ux_utility_memory_set(ram_disk_memory, 0, RAM_DISK_SIZE);
+    ux_utility_memory_set(ram_disk1_memory, 0, RAM_DISK_SIZE);
+    ux_utility_memory_set(ram_disk2_memory, 0, RAM_DISK_SIZE);
 
 #ifdef BUILD_FILE_SYSTEM
 
-    ux_utility_memory_copy(ram_disk_memory + 0 * 512, (void*)sector_0, sizeof(sector_0));
+    ux_utility_memory_copy(ram_disk1_memory + 0 * 512, (void*)sector_0, sizeof(sector_0));
+    ux_utility_memory_copy(ram_disk2_memory + 0 * 512, (void*)sector_0, sizeof(sector_0));
+
+    /* Set unique volume labels per LUN in boot sector (offset 0x2B). */
+    ux_utility_memory_copy(ram_disk1_memory + 0x2B, (void*)volume_label_lun1, sizeof(volume_label_lun1));
+    ux_utility_memory_copy(ram_disk2_memory + 0x2B, (void*)volume_label_lun2, sizeof(volume_label_lun2));
 
     /* Update number of sectors.  */
     if (RAM_DISK_N_LBA >= 0x100)
     {
-        ux_utility_short_put(ram_disk_memory + 0x13, 0);
-        ux_utility_long_put(ram_disk_memory + 0x20, RAM_DISK_N_LBA);
+        ux_utility_short_put(ram_disk1_memory + 0x13, 0);
+        ux_utility_long_put(ram_disk1_memory + 0x20, RAM_DISK_N_LBA);
+        ux_utility_short_put(ram_disk2_memory + 0x13, 0);
+        ux_utility_long_put(ram_disk2_memory + 0x20, RAM_DISK_N_LBA);
     }
     else
     {
-        ux_utility_short_put(ram_disk_memory + 0x13, RAM_DISK_N_LBA);
-        ux_utility_long_put(ram_disk_memory + 0x20, 0);
+        ux_utility_short_put(ram_disk1_memory + 0x13, RAM_DISK_N_LBA);
+        ux_utility_long_put(ram_disk1_memory + 0x20, 0);
+        ux_utility_short_put(ram_disk2_memory + 0x13, RAM_DISK_N_LBA);
+        ux_utility_long_put(ram_disk2_memory + 0x20, 0);
     }
 
-    ux_utility_memory_copy(ram_disk_memory + 6 * 512, (void*)sector_6_7, sizeof(sector_6_7));
-    ux_utility_memory_copy(ram_disk_memory + 7 * 512, (void*)sector_6_7, sizeof(sector_6_7));
-    ux_utility_memory_copy(ram_disk_memory + 8 * 512, (void*)sector_8, sizeof(sector_8));
+    ux_utility_memory_copy(ram_disk1_memory + 6 * 512, (void*)sector_6_7, sizeof(sector_6_7));
+    ux_utility_memory_copy(ram_disk1_memory + 7 * 512, (void*)sector_6_7, sizeof(sector_6_7));
+    ux_utility_memory_copy(ram_disk1_memory + 8 * 512, (void*)sector_8, sizeof(sector_8));
+
+    ux_utility_memory_copy(ram_disk2_memory + 6 * 512, (void*)sector_6_7, sizeof(sector_6_7));
+    ux_utility_memory_copy(ram_disk2_memory + 7 * 512, (void*)sector_6_7, sizeof(sector_6_7));
+    ux_utility_memory_copy(ram_disk2_memory + 8 * 512, (void*)sector_8, sizeof(sector_8));
+
+    /* Root directory volume label entry (first entry, 32 bytes). */
+    ux_utility_memory_set(ram_disk1_memory + 8 * 512, 0, 32);
+    ux_utility_memory_copy(ram_disk1_memory + 8 * 512, (void*)volume_label_lun1, sizeof(volume_label_lun1));
+    *(ram_disk1_memory + 8 * 512 + 0x0B) = 0x08; /* Attribute: Volume Label */
+
+    ux_utility_memory_set(ram_disk2_memory + 8 * 512, 0, 32);
+    ux_utility_memory_copy(ram_disk2_memory + 8 * 512, (void*)volume_label_lun2, sizeof(volume_label_lun2));
+    *(ram_disk2_memory + 8 * 512 + 0x0B) = 0x08; /* Attribute: Volume Label */
 
 #endif /* BUILD_FILE_SYSTEM */
 }

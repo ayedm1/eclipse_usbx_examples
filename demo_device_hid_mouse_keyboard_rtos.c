@@ -34,7 +34,6 @@
 /**************************************************************************/
 /**************************************************************************/
 
-#include "tx_api.h"
 #include "ux_api.h"
 #include "ux_device_class_hid.h"
 
@@ -128,7 +127,7 @@ UX_SLAVE_CLASS_HID *hid;
 /**************************************************/
 /**  thread object                                */
 /**************************************************/
-static TX_THREAD ux_hid_thread;
+static UX_THREAD ux_hid_thread;
 static ULONG ux_hid_thread_stack[UX_DEMO_THREAD_STACK_SIZE / sizeof(ULONG)];
 
 /**************************************************/
@@ -457,7 +456,7 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_parameter;
     /* Create the main demo thread.  */
     status = ux_utility_thread_create(&ux_hid_thread, "hid_usbx_app_thread_entry",
                                       ux_demo_device_hid_thread_entry, 0, ux_hid_thread_stack,
-                                      UX_DEMO_THREAD_STACK_SIZE, 20, 20, 1, TX_AUTO_START);
+                                      UX_DEMO_THREAD_STACK_SIZE, 20, 20, 1, UX_AUTO_START);
 
     if(status != UX_SUCCESS)
         return;

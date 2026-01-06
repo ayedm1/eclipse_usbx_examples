@@ -39,7 +39,7 @@
 #endif
 
 #ifndef UX_DEVICE_BIDIRECTIONAL_ENDPOINT_SUPPORT
-#erorr UX_DEVICE_BIDIRECTIONAL_ENDPOINT_SUPPORT must be defined for this sample
+#error UX_DEVICE_BIDIRECTIONAL_ENDPOINT_SUPPORT must be defined for this sample
 #endif
 
 #ifndef UX_STANDALONE
@@ -55,7 +55,7 @@
 /**************************************************/
 /**  Define constants                             */
 /**************************************************/
-#define UX_DEVICE_MEMORY_STACK_SIZE             (7*1024)
+#define UX_DEVICE_MEMORY_STACK_SIZE             (10*1024)
 
 #define UX_DEMO_STORAGE_DEVICE_VID              0x070A
 #define UX_DEMO_STORAGE_DEVICE_PID              0x4030
@@ -548,7 +548,10 @@ UINT ux_demo_device_storage_media_flush(VOID *storage, ULONG lun, ULONG number_b
     UX_PARAMETER_NOT_USED(lba);
     UX_PARAMETER_NOT_USED(media_status);
 
-    return(UX_SUCCESS);
+    /* The ATA drive never fails. This is just for usbx only !!!! */
+
+    /* Time consuming operation returns state status.  */
+    return(UX_STATE_NEXT);
 }
 
 /********************************************************************/
