@@ -2,7 +2,7 @@
 <project>
     <fileVersion>3</fileVersion>
     <configuration>
-        <name>demo_device_storage_rtos</name>
+        <name>demo_device_storage_standalone</name>
         <toolchain>
             <name>ARM</name>
         </toolchain>
