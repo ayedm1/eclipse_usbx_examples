@@ -55,7 +55,7 @@
 #define UX_DEMO_THREAD_STACK_SIZE               (1*1024)
 
 #define UX_DEMO_STORAGE_DEVICE_VID              0x070A
-#define UX_DEMO_STORAGE_DEVICE_PID              0x4030
+#define UX_DEMO_STORAGE_DEVICE_PID              0x4031
 
 #define UX_DEMO_BCD_USB                         0x0200
 #define UX_DEMO_MAX_EP0_SIZE                    0x40U
@@ -420,8 +420,7 @@ VOID tx_application_define(VOID *first_unused_memory)
 {
 CHAR                               *memory_pointer;
 UINT                               status;
-UX_SLAVE_CLASS_STORAGE_PARAMETER   storage_parameter;
-UX_SLAVE_CLASS_STORAGE_LUN         *lun;
+UX_SLAVE_CLASS_STORAGE_PARAMETER   storage_parameter = {0};
 
     UX_PARAMETER_NOT_USED(first_unused_memory);
 
@@ -450,28 +449,27 @@ UX_SLAVE_CLASS_STORAGE_LUN         *lun;
     storage_parameter.ux_slave_class_storage_parameter_number_lun = 2;
 
      /* Initialize the storage class parameters for reading/writing to the Flash Disk.  */
-    lun = &storage_parameter.ux_slave_class_storage_parameter_lun[0];
-    lun -> ux_slave_class_storage_media_last_lba = RAM_DISK_LAST_LBA;
-    lun -> ux_slave_class_storage_media_block_length = RAM_DISK_BLOCK_LENGTH;
-    lun -> ux_slave_class_storage_media_type = 0;
-    lun -> ux_slave_class_storage_media_removable_flag = 0x80;
-    lun -> ux_slave_class_storage_media_read_only_flag = UX_FALSE;
-    lun -> ux_slave_class_storage_media_read = ux_demo_device_storage_media_read;
-    lun -> ux_slave_class_storage_media_write = ux_demo_device_storage_media_write;
-    lun -> ux_slave_class_storage_media_status = ux_demo_device_storage_media_status;
-    lun -> ux_slave_class_storage_media_flush = RAM_DISK_WRITE_CACHING ? ux_demo_device_storage_media_flush : UX_NULL;
-
     /* LUN1 configuration */
-    lun = &storage_parameter.ux_slave_class_storage_parameter_lun[1];
-    lun -> ux_slave_class_storage_media_last_lba = RAM_DISK_LAST_LBA;
-    lun -> ux_slave_class_storage_media_block_length = RAM_DISK_BLOCK_LENGTH;
-    lun -> ux_slave_class_storage_media_type = 0;
-    lun -> ux_slave_class_storage_media_removable_flag = 0x80;
-    lun -> ux_slave_class_storage_media_read_only_flag = UX_FALSE;
-    lun -> ux_slave_class_storage_media_read = ux_demo_device_storage_media_read;
-    lun -> ux_slave_class_storage_media_write = ux_demo_device_storage_media_write;
-    lun -> ux_slave_class_storage_media_status = ux_demo_device_storage_media_status;
-    lun -> ux_slave_class_storage_media_flush = RAM_DISK_WRITE_CACHING ? ux_demo_device_storage_media_flush : UX_NULL;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_last_lba = RAM_DISK_LAST_LBA;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_block_length = RAM_DISK_BLOCK_LENGTH;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_type = 0;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_removable_flag = 0x80;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_read_only_flag = UX_FALSE;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_read = ux_demo_device_storage_media_read;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_write = ux_demo_device_storage_media_write;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_status = ux_demo_device_storage_media_status;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_flush = RAM_DISK_WRITE_CACHING ? ux_demo_device_storage_media_flush : UX_NULL;
+
+    /* LUN2 configuration */
+    storage_parameter.ux_slave_class_storage_parameter_lun[1].ux_slave_class_storage_media_last_lba = RAM_DISK_LAST_LBA;
+    storage_parameter.ux_slave_class_storage_parameter_lun[1].ux_slave_class_storage_media_block_length = RAM_DISK_BLOCK_LENGTH;
+    storage_parameter.ux_slave_class_storage_parameter_lun[1].ux_slave_class_storage_media_type = 0;
+    storage_parameter.ux_slave_class_storage_parameter_lun[1].ux_slave_class_storage_media_removable_flag = 0x80;
+    storage_parameter.ux_slave_class_storage_parameter_lun[1].ux_slave_class_storage_media_read_only_flag = UX_FALSE;
+    storage_parameter.ux_slave_class_storage_parameter_lun[1].ux_slave_class_storage_media_read = ux_demo_device_storage_media_read;
+    storage_parameter.ux_slave_class_storage_parameter_lun[1].ux_slave_class_storage_media_write = ux_demo_device_storage_media_write;
+    storage_parameter.ux_slave_class_storage_parameter_lun[1].ux_slave_class_storage_media_status = ux_demo_device_storage_media_status;
+    storage_parameter.ux_slave_class_storage_parameter_lun[1].ux_slave_class_storage_media_flush = RAM_DISK_WRITE_CACHING ? ux_demo_device_storage_media_flush : UX_NULL;
 
     /* Initialize the device storage class. The class is connected with interface 0 on configuration 1. */
     status = ux_device_stack_class_register(_ux_system_slave_class_storage_name, _ux_device_class_storage_entry,

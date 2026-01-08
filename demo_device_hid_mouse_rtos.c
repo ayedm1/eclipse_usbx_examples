@@ -80,10 +80,10 @@
 #define UX_DEMO_HID_MOUSE_CURSOR_MOVE_N 100
 #endif /* UX_DEMO_MOUSE_ABSOLUTE */
 
-#define UX_MOUSE_CURSOR_MOVE_RIGHT      0x00
-#define UX_MOUSE_CURSOR_MOVE_DOWN       0x01
-#define UX_MOUSE_CURSOR_MOVE_LEFT       0x02
-#define UX_MOUSE_CURSOR_MOVE_UP         0x03
+#define UX_MOUSE_CURSOR_MOVE_RIGHT      0x01
+#define UX_MOUSE_CURSOR_MOVE_DOWN       0x02
+#define UX_MOUSE_CURSOR_MOVE_LEFT       0x03
+#define UX_MOUSE_CURSOR_MOVE_UP         0x04
 
 /**************************************************/
 /**  usbx device hid demo callbacks               */
@@ -97,11 +97,6 @@ UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_
 /**  usbx application initialization with RTOS    */
 /**************************************************/
 VOID tx_application_define(VOID *first_unused_memory);
-
-/**************************************************/
-/**  usbx device hid demo thread                  */
-/**************************************************/
-VOID ux_demo_device_hid_thread_entry(ULONG thread_input);
 
 /**************************************************/
 /**  usbx device hid demo mouse                   */
@@ -122,6 +117,7 @@ UX_SLAVE_CLASS_HID *hid_mouse;
 /**************************************************/
 static UX_THREAD ux_hid_thread;
 static ULONG ux_hid_thread_stack[UX_DEMO_THREAD_STACK_SIZE / sizeof(ULONG)];
+static VOID ux_demo_device_hid_thread_entry(ULONG thread_input);
 
 /**************************************************/
 /**  usbx callback error                          */
@@ -133,11 +129,19 @@ static CHAR ux_system_memory_pool[UX_DEVICE_MEMORY_STACK_SIZE];
 #ifndef EXTERNAL_MAIN
 extern int board_setup(void);
 #endif /* EXTERNAL_MAIN */
+
+#ifndef EXTERNAL_DCD_INITIALIZE
 extern int usb_device_dcd_initialize(void *param);
+#endif /* EXTERNAL_DCD_INITIALIZE */
+
+UINT ux_demo_device_hid_init(VOID);
+UINT ux_demo_device_hid_uninit(VOID);
 
 /**************************************************/
 /**  HID Report descriptor                        */
 /**************************************************/
+#define UX_HID_MOUSE_REPORT_LENGTH (sizeof(hid_mouse_report)/sizeof(hid_mouse_report[0]))
+
 UCHAR hid_mouse_report[] = {
     0x05, 0x01,         // USAGE_PAGE (Generic Desktop)
     0x09, 0x02,         // USAGE (Mouse)
@@ -192,9 +196,17 @@ UCHAR hid_mouse_report[] = {
     0xC0                // END_COLLECTION
 };
 
-#define UX_HID_MOUSE_REPORT_LENGTH (sizeof(hid_mouse_report)/sizeof(hid_mouse_report[0]))
-
-#define DEVICE_FRAMEWORK_LENGTH_FULL_SPEED sizeof(ux_demo_device_framework_full_speed)
+/**************************************************/
+/**  USB descriptors                              */
+/**   - framework full speed                      */
+/**   - framework high speed                      */
+/**   - framework string                          */
+/**   - framework language id                     */
+/**************************************************/
+#define DEVICE_FRAMEWORK_LENGTH_FULL_SPEED_LENGTH   sizeof(ux_demo_device_framework_full_speed)
+#define DEVICE_FRAMEWORK_LENGTH_HIGH_SPEED_LENGTH   sizeof(ux_demo_device_framework_high_speed)
+#define DEVICE_FRAMEWORK_STRING_LENGTH              sizeof(ux_demo_device_framework_string)
+#define DEVICE_FRAMEWORK_LANGUAGE_ID_LENGTH         sizeof(ux_demo_device_framework_language_id)
 
 UCHAR ux_demo_device_framework_full_speed[] = {
     /* Device descriptor */
@@ -263,7 +275,6 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     UX_DEMO_HID_ENDPOINT_BINTERVAL, /* bInterval : 8 : 8ms / x128 (FS 128ms/HS 16ms) */
 };
 
-#define DEVICE_FRAMEWORK_LENGTH_HIGH_SPEED sizeof(ux_demo_device_framework_high_speed)
 UCHAR ux_demo_device_framework_high_speed[] = {
     /* Device descriptor */
     0x12,                       /* bLength */
@@ -342,14 +353,12 @@ UCHAR ux_demo_device_framework_high_speed[] = {
     UX_DEMO_HID_ENDPOINT_BINTERVAL, /* bInterval : 8 : 8ms / x128 (FS 128ms/HS 16ms) */
 };
 
-
 /* String Device Framework :
    Byte 0 and 1 : Word containing the language ID : 0x0904 for US
    Byte 2       : Byte containing the index of the descriptor
    Byte 3       : Byte containing the length of the descriptor string
 */
-#define STRING_FRAMEWORK_LENGTH sizeof(ux_demo_string_framework)
-UCHAR ux_demo_string_framework[] = {
+UCHAR ux_demo_device_framework_string[] = {
 
     /* iManufacturer string descriptor : Index 1 */
     0x09, 0x04, 0x01, 12,
@@ -376,13 +385,11 @@ UCHAR ux_demo_string_framework[] = {
     'M', 'o', 'u', 's', 'e'
 };
 
-
 /* Multiple languages are supported on the device, to add  a language besides english,
-   the unicode language code must be appended to the ux_demo_language_id_framework array and the length
-   adjusted accordingly.
+   the unicode language code must be appended to the ux_demo_device_framework_language_id
+   array and the length adjusted accordingly.
 */
-#define LANGUAGE_ID_FRAMEWORK_LENGTH sizeof(ux_demo_language_id_framework)
-UCHAR ux_demo_language_id_framework[] = {
+UCHAR ux_demo_device_framework_language_id[] = {
     /* English. */
     0x09, 0x04
 };
@@ -400,32 +407,40 @@ int main(void)
 
 VOID tx_application_define(VOID *first_unused_memory)
 {
+    UX_PARAMETER_NOT_USED(first_unused_memory);
+
+    ux_demo_device_hid_init();
+}
+
+/********************************************************************/
+/**  ux_demo_device_hid_init                                        */
+/********************************************************************/
+UINT ux_demo_device_hid_init(VOID)
+{
 CHAR                            *memory_pointer;
 UINT                            status;
 UX_SLAVE_CLASS_HID_PARAMETER    hid_mouse_parameter;
 
-    UX_PARAMETER_NOT_USED(first_unused_memory);
-
     /* Use static memory block.  */
     memory_pointer = ux_system_memory_pool;
 
-    /* Initialize USBX Memory */
+    /* Initialize USBX Memory.  */
     status = ux_system_initialize(memory_pointer, UX_DEVICE_MEMORY_STACK_SIZE, UX_NULL, 0);
 
     if(status != UX_SUCCESS)
-        return;
+        return status;
 
     /* Install the device portion of USBX.  */
-    status =  ux_device_stack_initialize(ux_demo_device_framework_high_speed, DEVICE_FRAMEWORK_LENGTH_HIGH_SPEED,
-                                         ux_demo_device_framework_full_speed, DEVICE_FRAMEWORK_LENGTH_FULL_SPEED,
-                                         ux_demo_string_framework, STRING_FRAMEWORK_LENGTH,
-                                         ux_demo_language_id_framework, LANGUAGE_ID_FRAMEWORK_LENGTH,
+    status =  ux_device_stack_initialize(ux_demo_device_framework_high_speed, DEVICE_FRAMEWORK_LENGTH_HIGH_SPEED_LENGTH,
+                                         ux_demo_device_framework_full_speed, DEVICE_FRAMEWORK_LENGTH_FULL_SPEED_LENGTH,
+                                         ux_demo_device_framework_string, DEVICE_FRAMEWORK_STRING_LENGTH,
+                                         ux_demo_device_framework_language_id, DEVICE_FRAMEWORK_LANGUAGE_ID_LENGTH,
                                          UX_NULL);
 
     if(status != UX_SUCCESS)
-        return;
+        return status;
 
-    /* Initialize the hid mouse class parameters for the device */
+    /* Initialize the hid mouse class parameters for the device.  */
     hid_mouse_parameter.ux_slave_class_hid_instance_activate         = ux_demo_device_hid_instance_activate;
     hid_mouse_parameter.ux_slave_class_hid_instance_deactivate       = ux_demo_device_hid_instance_deactivate;
     hid_mouse_parameter.ux_device_class_hid_parameter_report_address = hid_mouse_report;
@@ -439,7 +454,7 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_mouse_parameter;
                                             1, 0, (VOID *)&hid_mouse_parameter);
 
     if(status != UX_SUCCESS)
-        return;
+        return status;
 
     /* Create the main demo thread.  */
     status = ux_utility_thread_create(&ux_hid_thread, "hid_usbx_app_thread_entry",
@@ -447,10 +462,40 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_mouse_parameter;
                                       UX_DEMO_THREAD_STACK_SIZE, 20, 20, 1, UX_AUTO_START);
 
     if(status != UX_SUCCESS)
-        return;
+        return status;
 
-    /* Register error callback. */
+    /* Register error callback.  */
     ux_utility_error_callback_register(ux_demo_error_callback);
+
+    return UX_SUCCESS;
+}
+
+/********************************************************************/
+/**  ux_demo_device_hid_uninit                                      */
+/********************************************************************/
+UINT ux_demo_device_hid_uninit(VOID)
+{
+UINT    status;
+
+    /* Uninitialize USBX Memory.  */
+    status = ux_device_stack_uninitialize();
+
+    if(status != UX_SUCCESS)
+        return status;
+
+    /* Uninitialize the device hid class.  */
+    status = ux_device_stack_class_unregister(_ux_system_slave_class_hid_name, ux_device_class_hid_entry);
+
+    if(status != UX_SUCCESS)
+        return status;
+
+    /* Delete the main demo thread.  */
+    status = ux_utility_thread_delete(&ux_hid_thread);
+
+    if(status != UX_SUCCESS)
+        return status;
+
+    return UX_SUCCESS;
 }
 
 /********************************************************************/
@@ -496,13 +541,20 @@ UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_
 /********************************************************************/
 /**  ux_demo_device_hid_thread_entry: hid demo thread               */
 /********************************************************************/
-VOID ux_demo_device_hid_thread_entry(ULONG thread_input)
+static VOID ux_demo_device_hid_thread_entry(ULONG thread_input)
 {
 
     UX_PARAMETER_NOT_USED(thread_input);
 
+#ifndef EXTERNAL_DCD_INITIALIZE
+
     /* Register the USB device controllers available in this system */
     usb_device_dcd_initialize(UX_NULL);
+#else /* EXTERNAL_DCD_INITIALIZE */
+
+    /* Register the USB device simulator controllers for testing */
+    ux_dcd_sim_slave_initialize();
+#endif /* EXTERNAL_DCD_INITIALIZE */
 
     while (1)
     {
@@ -510,8 +562,10 @@ VOID ux_demo_device_hid_thread_entry(ULONG thread_input)
       if ((UX_SLAVE_DEVICE_CHECK_STATE(UX_DEVICE_CONFIGURED)) && (hid_mouse != UX_NULL))
       {
 #ifdef UX_DEMO_MOUSE_ABSOLUTE
+
           ux_demo_hid_mouse_absolute_cursor_move(hid_mouse);
 #else /* UX_DEMO_MOUSE_ABSOLUTE */
+
           ux_demo_hid_mouse_cursor_move(hid_mouse);
 #endif /* UX_DEMO_MOUSE_ABSOLUTE */
       }
@@ -533,8 +587,8 @@ UINT                        status;
 UX_SLAVE_CLASS_HID_EVENT    device_hid_event;
 static UCHAR                mouse_x;
 static UCHAR                mouse_y;
-static UCHAR                mouse_move_dir;
 static UCHAR                mouse_move_count;
+static UCHAR                mouse_move_dir = UX_MOUSE_CURSOR_MOVE_RIGHT;
 
     /* Sleep thread for 10ms.  */
     ux_utility_delay_ms(MS_TO_TICK(10));
@@ -563,6 +617,11 @@ static UCHAR                mouse_move_count;
             mouse_move_dir = UX_MOUSE_CURSOR_MOVE_DOWN;
         }
 
+        status = ux_device_class_hid_event_set(device_hid, &device_hid_event);
+
+        if(status != UX_SUCCESS)
+            return UX_ERROR;
+
         break;
 
     case UX_MOUSE_CURSOR_MOVE_DOWN:  /* +y.  */
@@ -576,6 +635,11 @@ static UCHAR                mouse_move_count;
             mouse_move_count = 0;
             mouse_move_dir = UX_MOUSE_CURSOR_MOVE_LEFT;
         }
+
+        status = ux_device_class_hid_event_set(device_hid, &device_hid_event);
+
+        if(status != UX_SUCCESS)
+            return UX_ERROR;
 
         break;
 
@@ -591,6 +655,11 @@ static UCHAR                mouse_move_count;
             mouse_move_dir = UX_MOUSE_CURSOR_MOVE_UP;
         }
 
+        status = ux_device_class_hid_event_set(device_hid, &device_hid_event);
+
+        if(status != UX_SUCCESS)
+            return UX_ERROR;
+
         break;
 
     case UX_MOUSE_CURSOR_MOVE_UP:  /* -y. */
@@ -602,8 +671,13 @@ static UCHAR                mouse_move_count;
         if (mouse_move_count >= UX_DEMO_HID_MOUSE_CURSOR_MOVE_N)
         {
             mouse_move_count = 0;
-            mouse_move_dir = UX_MOUSE_CURSOR_MOVE_RIGHT;
+            mouse_move_dir = 0;
         }
+
+        status = ux_device_class_hid_event_set(device_hid, &device_hid_event);
+
+        if(status != UX_SUCCESS)
+            return UX_ERROR;
 
         break;
 
@@ -616,11 +690,6 @@ static UCHAR                mouse_move_count;
 
         break;
     }
-
-    status = ux_device_class_hid_event_set(device_hid, &device_hid_event);
-
-    if(status != UX_SUCCESS)
-        return UX_ERROR;
 
     return mouse_move_dir;
 }
@@ -639,7 +708,7 @@ ULONG                       width = 10000;
 ULONG                       height = 10000;
 static ULONG                mouse_x;
 static ULONG                mouse_y;
-static UCHAR                mouse_move_dir;
+static UCHAR                mouse_move_dir = UX_MOUSE_CURSOR_MOVE_RIGHT;
 
     /* Sleep thread for 100ms.  */
     ux_utility_delay_ms(MS_TO_TICK(100));
@@ -668,6 +737,12 @@ static UCHAR                mouse_move_dir;
             mouse_move_dir = UX_MOUSE_CURSOR_MOVE_DOWN;
         }
 
+        /* Set the mouse event.  */
+        status = ux_device_class_hid_event_set(device_hid, &device_hid_event);
+
+        if (status != UX_SUCCESS)
+            return UX_ERROR;
+
         break;
 
     case UX_MOUSE_CURSOR_MOVE_DOWN:  /* +y.  */
@@ -679,6 +754,12 @@ static UCHAR                mouse_move_dir;
             mouse_y = start_mouse_y + height;
             mouse_move_dir = UX_MOUSE_CURSOR_MOVE_LEFT;
         }
+
+        /* Set the mouse event.  */
+        status = ux_device_class_hid_event_set(device_hid, &device_hid_event);
+
+        if (status != UX_SUCCESS)
+            return UX_ERROR;
 
         break;
 
@@ -692,6 +773,12 @@ static UCHAR                mouse_move_dir;
             mouse_move_dir = UX_MOUSE_CURSOR_MOVE_UP;
         }
 
+        /* Set the mouse event.  */
+        status = ux_device_class_hid_event_set(device_hid, &device_hid_event);
+
+        if (status != UX_SUCCESS)
+            return UX_ERROR;
+
         break;
 
     case UX_MOUSE_CURSOR_MOVE_UP:  /* -y. */
@@ -701,8 +788,14 @@ static UCHAR                mouse_move_dir;
         if (mouse_y <= start_mouse_y)
         {
             mouse_y = start_mouse_y;
-            mouse_move_dir = UX_MOUSE_CURSOR_MOVE_RIGHT;
+            mouse_move_dir = 0;
         }
+
+        /* Set the mouse event.  */
+        status = ux_device_class_hid_event_set(device_hid, &device_hid_event);
+
+        if (status != UX_SUCCESS)
+            return UX_ERROR;
 
         break;
 
@@ -715,12 +808,6 @@ static UCHAR                mouse_move_dir;
 
         break;
     }
-
-    /* Set the mouse event.  */
-    status = ux_device_class_hid_event_set(device_hid, &device_hid_event);
-
-    if(status != UX_SUCCESS)
-        return UX_ERROR;
 
     return mouse_move_dir;
 }
