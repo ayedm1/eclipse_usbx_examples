@@ -22,7 +22,7 @@
 /** Note                                                                  */
 /**                                                                       */
 /**  This demonstration is not optimized, to optimize application user    */
-/**  sould configuer related class flag in ux_user.h and adjust           */
+/**  should configure related class flag in ux_user.h and adjust          */
 /**  UX_DEVICE_MEMORY_STACK_SIZE                                          */
 /**                                                                       */
 /**                                                                       */
@@ -41,9 +41,8 @@
 #endif
 
 #if (UX_DEVICE_CLASS_HID_EVENT_BUFFER_LENGTH < 8)
-#error HID Keyboard event buffer length must be more then 8
+#error HID keyboard event buffer length must be more then 8.
 #endif
-
 
 /* Defined the keyboard will act as boot device. */
 /* define DEMO_HID_BOOT_DEVICE */
@@ -53,19 +52,6 @@
 /**************************************************/
 #define UX_DEVICE_MEMORY_STACK_SIZE     (7*1024)
 #define UX_DEMO_THREAD_STACK_SIZE       (1*1024)
-
-#define UX_DEMO_HID_DEVICE_VID          0x070A
-#define UX_DEMO_HID_DEVICE_PID          0x4090
-#define UX_DEMO_MAX_EP0_SIZE            0x40U
-#define UX_DEMO_HID_CONFIG_DESC_SIZE    0x22U
-
-#define UX_DEMO_BCD_USB                 0x0200
-
-#define UX_DEMO_BCD_HID                 0x0110
-
-#define UX_DEMO_HID_ENDPOINT_SIZE       0x08
-#define UX_DEMO_HID_ENDPOINT_ADDRESS    0x81
-#define UX_DEMO_HID_ENDPOINT_BINTERVAL  0x08
 
 #ifdef DEMO_HID_BOOT_DEVICE
 #define UX_DEMO_HID_SUBCLASS            0x01
@@ -77,55 +63,88 @@
 #define UX_HID_CAPS_LOCK_MASK           0x02
 
 /**************************************************/
-/**  usbx device hid demo callbacks               */
+/**  Demo descriptor define constants             */
 /**************************************************/
+#define UX_DEMO_DEVICE_VID                  0x090A
+#define UX_DEMO_DEVICE_PID                  0x4036
+
+#define UX_DEMO_MAX_EP0_FS_SIZE             0x08U
+#define UX_DEMO_MAX_EP0_HS_SIZE             0x40U
+
+#define UX_DEMO_HID_CONFIG_DESC_SIZE        0x22U
+#define UX_DEMO_BCD_USB                     0x0200
+#define UX_DEMO_BCD_HID                     0x0110
+
+#define UX_DEMO_HID_ENDPOINT_ADDRESS        0x81
+
+#define UX_DEMO_HID_ENDPOINT_FS_SIZE        0x08
+#define UX_DEMO_HID_ENDPOINT_FS_BINTERVAL   0x08
+
+#define UX_DEMO_HID_ENDPOINT_HS_SIZE        0x08
+#define UX_DEMO_HID_ENDPOINT_HS_BINTERVAL   0x08
+
+/************************************************************/
+/**  Demo device class demo callbacks function prototypes   */
+/************************************************************/
 VOID ux_demo_device_hid_instance_activate(VOID *hid_instance);
 VOID ux_demo_device_hid_instance_deactivate(VOID *hid_instance);
 UINT ux_demo_device_hid_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_CLASS_HID_EVENT *hid_event);
 UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_CLASS_HID_EVENT *hid_event);
 
-/**************************************************/
-/**  usbx device hid demo thread                  */
-/**************************************************/
-VOID ux_demo_device_hid_thread_entry(ULONG thread_input);
-
-/**************************************************/
-/**  usbx application initialization with RTOS    */
-/**************************************************/
+#ifndef DEMO_TEST
+/************************************************************/
+/**  usbx application initialization with RTOS              */
+/************************************************************/
 VOID tx_application_define(VOID *first_unused_memory);
+#endif /* DEMO_TEST */
 
-/**************************************************/
-/**  usbx device hid keyboard instance            */
-/**************************************************/
+/************************************************************/
+/**  usbx device hid keyboard instance                      */
+/************************************************************/
 UX_SLAVE_CLASS_HID *hid_keyboard;
 
-/**************************************************/
-/**  usbx device hid keyboard                     */
-/**************************************************/
+/************************************************************/
+/**  Thread object                                          */
+/************************************************************/
+static UX_THREAD ux_hid_thread;
+static ULONG ux_hid_thread_stack[UX_DEMO_THREAD_STACK_SIZE / sizeof(ULONG)];
+static VOID ux_demo_device_hid_thread_entry(ULONG thread_input);
+
+/************************************************************/
+/**  usbx demo callback prototype                           */
+/************************************************************/
+static VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code);
+
+/************************************************************/
+/**  Demo function prototypes                               */
+/************************************************************/
+UINT ux_demo_device_hid_init(VOID);
+UINT ux_demo_device_hid_uninit(VOID);
+UINT ux_demo_device_hid_keyboard_send_character(UX_SLAVE_CLASS_HID *device_hid);
+
+/************************************************************/
+/**  Demo variables                                         */
+/************************************************************/
+static CHAR ux_system_memory_pool[UX_DEVICE_MEMORY_STACK_SIZE];
 ULONG num_lock_flag  = UX_FALSE;
 ULONG caps_lock_flag = UX_FALSE;
 
-/**************************************************/
-/**  thread object                                */
-/**************************************************/
-static UX_THREAD ux_hid_thread;
-static ULONG ux_hid_thread_stack[UX_DEMO_THREAD_STACK_SIZE / sizeof(ULONG)];
-
-/**************************************************/
-/**  usbx callback error                          */
-/**************************************************/
-static VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code);
-
-static CHAR ux_system_memory_pool[UX_DEVICE_MEMORY_STACK_SIZE];
-
+/************************************************************/
+/**  usbx demo extern function prototypes                   */
+/************************************************************/
 #ifndef EXTERNAL_MAIN
 extern int board_setup(void);
 #endif /* EXTERNAL_MAIN */
-extern int usb_device_dcd_initialize(void *param);
 
-/**************************************************/
-/**  HID Report descriptor                        */
-/**************************************************/
+#ifndef EXTERNAL_DCD_INITIALIZE
+extern int usb_device_dcd_initialize(void *param);
+#endif /* EXTERNAL_DCD_INITIALIZE */
+
+/************************************************************/
+/**  HID Report descriptor                                  */
+/************************************************************/
+#define UX_HID_KEYBOARD_REPORT_LENGTH (sizeof(hid_keyboard_report)/sizeof(hid_keyboard_report[0]))
+
 UCHAR hid_keyboard_report[] = {
     0x05, 0x01,         // USAGE_PAGE (Generic Desktop)
     0x09, 0x06,         // USAGE (Keyboard)
@@ -174,9 +193,18 @@ UCHAR hid_keyboard_report[] = {
     0xc0                // End Collection
 };
 
-#define UX_HID_KEYBOARD_REPORT_LENGTH (sizeof(hid_keyboard_report)/sizeof(hid_keyboard_report[0]))
+/************************************************************/
+/**  USB descriptors                                        */
+/**   - framework full speed                                */
+/**   - framework high speed                                */
+/**   - framework string                                    */
+/**   - framework language id                               */
+/************************************************************/
+#define DEVICE_FRAMEWORK_LENGTH_FULL_SPEED_LENGTH   sizeof(ux_demo_device_framework_full_speed)
+#define DEVICE_FRAMEWORK_LENGTH_HIGH_SPEED_LENGTH   sizeof(ux_demo_device_framework_high_speed)
+#define DEVICE_FRAMEWORK_STRING_LENGTH              sizeof(ux_demo_device_framework_string)
+#define DEVICE_FRAMEWORK_LANGUAGE_ID_LENGTH         sizeof(ux_demo_device_framework_language_id)
 
-#define DEVICE_FRAMEWORK_LENGTH_FULL_SPEED sizeof(ux_demo_device_framework_full_speed)
 UCHAR ux_demo_device_framework_full_speed[] = {
     /* Device descriptor */
     0x12,                       /* bLength */
@@ -185,10 +213,10 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     0x00,                       /* bDeviceClass : 0x00 : Interface-defined */
     0x00,                       /* bDeviceSubClass : 0x00 : Reset */
     0x00,                       /* bDeviceProtocol : 0x00 : Reset */
-    UX_DEMO_MAX_EP0_SIZE,       /* bMaxPacketSize0 */
-    UX_W0(UX_DEMO_HID_DEVICE_VID), UX_W1(UX_DEMO_HID_DEVICE_VID), /* idVendor : ... */
-    UX_W0(UX_DEMO_HID_DEVICE_PID), UX_W1(UX_DEMO_HID_DEVICE_PID), /* idProduct */
-    0x00, 0x00,                 /* bcdDevice */
+    UX_DEMO_MAX_EP0_FS_SIZE,    /* bMaxPacketSize0 */
+    UX_W0(UX_DEMO_DEVICE_VID), UX_W1(UX_DEMO_DEVICE_VID), /* idVendor */
+    UX_W0(UX_DEMO_DEVICE_PID), UX_W1(UX_DEMO_DEVICE_PID), /* idProduct */
+    UX_W0(0x200), UX_W1(0x200), /* bcdDevice */
     0x01,                       /* iManufacturer */
     0x02,                       /* iProduct */
     0x03,                       /* iSerialNumber */
@@ -197,7 +225,8 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     /* Configuration Descriptor, total 34 */
     0x09,                       /* bLength */
     0x02,                       /* bDescriptorType */
-    UX_W0(UX_DEMO_HID_CONFIG_DESC_SIZE), UX_W1(UX_DEMO_HID_CONFIG_DESC_SIZE), /* wTotalLength */
+    UX_W0(UX_DEMO_HID_CONFIG_DESC_SIZE), /* wTotalLength */
+    UX_W1(UX_DEMO_HID_CONFIG_DESC_SIZE),
     0x01,                       /* bNumInterfaces */
     0x01,                       /* bConfigurationValue */
     0x04,                       /* iConfiguration */
@@ -213,7 +242,7 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     0x00,                       /* bAlternateSetting */
     0x01,                       /* bNumEndpoints */
     0x03,                       /* bInterfaceClass : 0x03 : HID */
-    UX_DEMO_HID_SUBCLASS,       /* bInterfaceSubClass : ... : Boot/non-boot Subclass */
+    UX_DEMO_HID_SUBCLASS,       /* bInterfaceSubClass : Boot/non-boot Subclass */
     0x01,                       /* bInterfaceProtocol : 0x00 : Undefined */
     0x06,                       /* iInterface */
 
@@ -224,25 +253,25 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     0x21,                       /* bCountryCode : 33 : US */
     0x01,                       /* bNumDescriptors */
     0x22,                       /* bReportDescriptorType1 : 0x22 : Report descriptor */
-    UX_W0(UX_HID_KEYBOARD_REPORT_LENGTH), UX_W1(UX_HID_KEYBOARD_REPORT_LENGTH), /* wDescriptorLength1 */
+    UX_W0(UX_HID_KEYBOARD_REPORT_LENGTH), /* wDescriptorLength1 */
+    UX_W1(UX_HID_KEYBOARD_REPORT_LENGTH),
 
     /* Endpoint Descriptor */
     0x07,                           /* bLength */
     0x05,                           /* bDescriptorType */
     UX_DEMO_HID_ENDPOINT_ADDRESS,   /* bEndpointAddress */
                                     /* D7, Direction : 0x01 */
-                                    /* D3..0, Endpoint number : 1 */
+                                    /* D3..0, Endpoint number */
     0x03,                           /* bmAttributes */
                                         /* D1..0, Transfer Type : 0x3 : Interrupt */
                                         /* D3..2, Synchronization Type : 0x0 : No Synchronization */
                                         /* D5..4, Usage Type : 0x0 : Data endpoint */
-    UX_W0(UX_DEMO_HID_ENDPOINT_SIZE), UX_W1(UX_DEMO_HID_ENDPOINT_SIZE), /* wMaxPacketSize */
-                                        /* D10..0, Max Packet Size */
-                                        /* D12..11, Additional transactions : 0x00 */
-    UX_DEMO_HID_ENDPOINT_BINTERVAL, /* bInterval : 8 : 8ms / x128 (FS 128ms/HS 16ms) */
+    UX_W0(UX_DEMO_HID_ENDPOINT_FS_SIZE), /* wMaxPacketSize */
+    UX_W1(UX_DEMO_HID_ENDPOINT_FS_SIZE),   /* D10..0, Max Packet Size */
+                                           /* D12..11, Additional transactions : 0x00 */
+    UX_DEMO_HID_ENDPOINT_FS_BINTERVAL, /* bInterval : 8ms / x128 (FS 128ms/HS 16ms) */
 };
 
-#define DEVICE_FRAMEWORK_LENGTH_HIGH_SPEED sizeof(ux_demo_device_framework_high_speed)
 UCHAR ux_demo_device_framework_high_speed[] = {
     /* Device descriptor */
     0x12,                       /* bLength */
@@ -251,10 +280,10 @@ UCHAR ux_demo_device_framework_high_speed[] = {
     0x00,                       /* bDeviceClass : 0x00 : Interface-defined */
     0x00,                       /* bDeviceSubClass : 0x00 : Reset */
     0x00,                       /* bDeviceProtocol : 0x00 : Reset */
-    UX_DEMO_MAX_EP0_SIZE,       /* bMaxPacketSize0 */
-    UX_W0(UX_DEMO_HID_DEVICE_VID), UX_W1(UX_DEMO_HID_DEVICE_VID), /* idVendor : ... */
-    UX_W0(UX_DEMO_HID_DEVICE_PID), UX_W1(UX_DEMO_HID_DEVICE_PID), /* idProduct */
-    0x01, 0x00,                 /* bcdDevice */
+    UX_DEMO_MAX_EP0_HS_SIZE,    /* bMaxPacketSize0 */
+    UX_W0(UX_DEMO_DEVICE_VID), UX_W1(UX_DEMO_DEVICE_VID), /* idVendor */
+    UX_W0(UX_DEMO_DEVICE_PID), UX_W1(UX_DEMO_DEVICE_PID), /* idProduct */
+    UX_W0(0x200), UX_W1(0x200), /* bcdDevice */
     0x01,                       /* iManufacturer */
     0x02,                       /* iProduct */
     0x03,                       /* iSerialNumber */
@@ -267,14 +296,15 @@ UCHAR ux_demo_device_framework_high_speed[] = {
     0x00,                       /* bDeviceClass : 0x00 : Interface-defined */
     0x00,                       /* bDeviceSubClass : 0x00 : Reset */
     0x00,                       /* bDeviceProtocol : 0x00 : Reset */
-    UX_DEMO_MAX_EP0_SIZE,       /* bMaxPacketSize0 */
+    UX_DEMO_MAX_EP0_HS_SIZE,    /* bMaxPacketSize0 */
     0x01,                       /* bNumConfigurations */
     0x00,                       /* bReserved */
 
     /* Configuration descriptor */
     0x09,                       /* bLength */
     0x02,                       /* bDescriptorType */
-    UX_W0(UX_DEMO_HID_CONFIG_DESC_SIZE), UX_W1(UX_DEMO_HID_CONFIG_DESC_SIZE), /* wTotalLength */
+    UX_W0(UX_DEMO_HID_CONFIG_DESC_SIZE), /* wTotalLength */
+    UX_W1(UX_DEMO_HID_CONFIG_DESC_SIZE),
     0x01,                       /* bNumInterfaces */
     0x01,                       /* bConfigurationValue */
     0x05,                       /* iConfiguration */
@@ -290,7 +320,7 @@ UCHAR ux_demo_device_framework_high_speed[] = {
     0x00,                       /* bAlternateSetting */
     0x01,                       /* bNumEndpoints */
     0x03,                       /* bInterfaceClass : 0x03 : HID */
-    UX_DEMO_HID_SUBCLASS,       /* bInterfaceSubClass : ... : Boot/non-boot Subclass */
+    UX_DEMO_HID_SUBCLASS,       /* bInterfaceSubClass : Boot/non-boot Subclass */
     0x01,                       /* bInterfaceProtocol : 0x00 : Undefined */
     0x06,                       /* iInterface */
 
@@ -301,32 +331,31 @@ UCHAR ux_demo_device_framework_high_speed[] = {
     0x21,                       /* bCountryCode : 33 : US */
     0x01,                       /* bNumDescriptors */
     0x22,                       /* bReportDescriptorType1 : 0x22 : Report descriptor */
-    UX_W0(UX_HID_KEYBOARD_REPORT_LENGTH), UX_W1(UX_HID_KEYBOARD_REPORT_LENGTH), /* wDescriptorLength1  */
+    UX_W0(UX_HID_KEYBOARD_REPORT_LENGTH), /* wDescriptorLength1  */
+    UX_W1(UX_HID_KEYBOARD_REPORT_LENGTH),
 
     /* Endpoint Descriptor (Interrupt In) */
     0x07,                           /* bLength */
     0x05,                           /* bDescriptorType */
     UX_DEMO_HID_ENDPOINT_ADDRESS,   /* bEndpointAddress */
                                     /* D7, Direction : 0x01 */
-                                    /* D3..0, Endpoint number : 1 */
+                                    /* D3..0, Endpoint number */
     0x03,                           /* bmAttributes */
                                         /* D1..0, Transfer Type : 0x3 : Interrupt */
                                         /* D3..2, Synchronization Type : 0x0 : No Synchronization */
                                         /* D5..4, Usage Type : 0x0 : Data endpoint */
-    UX_W0(UX_DEMO_HID_ENDPOINT_SIZE), UX_W1(UX_DEMO_HID_ENDPOINT_SIZE), /* wMaxPacketSize */
-                                        /* D10..0, Max Packet Size */
-                                        /* D12..11, Additional transactions : 0x00 */
-    UX_DEMO_HID_ENDPOINT_BINTERVAL, /* bInterval : 8 : 8ms / x128 (FS 128ms/HS 16ms) */
+    UX_W0(UX_DEMO_HID_ENDPOINT_HS_SIZE), /* wMaxPacketSize */
+    UX_W1(UX_DEMO_HID_ENDPOINT_HS_SIZE),   /* D10..0, Max Packet Size */
+                                           /* D12..11, Additional transactions */
+    UX_DEMO_HID_ENDPOINT_HS_BINTERVAL, /* bInterval : 8ms / x128 (FS 128ms/HS 16ms) */
 };
-
 
 /* String Device Framework :
    Byte 0 and 1 : Word containing the language ID : 0x0904 for US
    Byte 2       : Byte containing the index of the descriptor
    Byte 3       : Byte containing the length of the descriptor string
 */
-#define STRING_FRAMEWORK_LENGTH sizeof(ux_demo_string_framework)
-UCHAR ux_demo_string_framework[] = {
+UCHAR ux_demo_device_framework_string[] = {
 
     /* iManufacturer string descriptor : Index 1 */
     0x09, 0x04, 0x01, 12,
@@ -355,11 +384,10 @@ UCHAR ux_demo_string_framework[] = {
 
 
 /* Multiple languages are supported on the device, to add  a language besides english,
-   the unicode language code must be appended to the ux_demo_language_id_framework array and the length
-   adjusted accordingly.
+   the unicode language code must be appended to the ux_demo_device_framework_language_id
+   array and the length adjusted accordingly.
 */
-#define LANGUAGE_ID_FRAMEWORK_LENGTH sizeof(ux_demo_language_id_framework)
-UCHAR ux_demo_language_id_framework[] = {
+UCHAR ux_demo_device_framework_language_id[] = {
     /* English. */
     0x09, 0x04
 };
@@ -375,35 +403,46 @@ int main(void)
 }
 #endif /* EXTERNAL_MAIN */
 
+#ifndef DEMO_TEST
 VOID tx_application_define(VOID *first_unused_memory)
 {
+    UX_PARAMETER_NOT_USED(first_unused_memory);
+
+    ux_demo_device_hid_init();
+}
+#endif /* DEMO_TEST */
+
+/********************************************************************/
+/**  ux_demo_device_hid_init                                        */
+/********************************************************************/
+UINT ux_demo_device_hid_init(VOID)
+{
+
 CHAR                            *memory_pointer;
 UINT                            status;
 UX_SLAVE_CLASS_HID_PARAMETER    hid_keyboard_parameter;
 
 
-    UX_PARAMETER_NOT_USED(first_unused_memory);
-
     /* Use static memory block.  */
     memory_pointer = ux_system_memory_pool;
 
-    /* Initialize USBX Memory */
+    /* Initialize USBX Memory.  */
     status = ux_system_initialize(memory_pointer, UX_DEVICE_MEMORY_STACK_SIZE, UX_NULL, 0);
 
     if(status != UX_SUCCESS)
-        return;
+        return status;
 
     /* Install the device portion of USBX.  */
-    status =  ux_device_stack_initialize(ux_demo_device_framework_high_speed, DEVICE_FRAMEWORK_LENGTH_HIGH_SPEED,
-                                         ux_demo_device_framework_full_speed, DEVICE_FRAMEWORK_LENGTH_FULL_SPEED,
-                                         ux_demo_string_framework, STRING_FRAMEWORK_LENGTH,
-                                         ux_demo_language_id_framework, LANGUAGE_ID_FRAMEWORK_LENGTH,
+    status =  ux_device_stack_initialize(ux_demo_device_framework_high_speed, DEVICE_FRAMEWORK_LENGTH_HIGH_SPEED_LENGTH,
+                                         ux_demo_device_framework_full_speed, DEVICE_FRAMEWORK_LENGTH_FULL_SPEED_LENGTH,
+                                         ux_demo_device_framework_string, DEVICE_FRAMEWORK_STRING_LENGTH,
+                                         ux_demo_device_framework_language_id, DEVICE_FRAMEWORK_LANGUAGE_ID_LENGTH,
                                          UX_NULL);
 
     if(status != UX_SUCCESS)
-        return;
+        return status;
 
-    /* Initialize the hid keyboard class parameters for the device */
+    /* Initialize the hid keyboard class parameters for the device.  */
     hid_keyboard_parameter.ux_slave_class_hid_instance_activate         = ux_demo_device_hid_instance_activate;
     hid_keyboard_parameter.ux_slave_class_hid_instance_deactivate       = ux_demo_device_hid_instance_deactivate;
     hid_keyboard_parameter.ux_device_class_hid_parameter_report_address = hid_keyboard_report;
@@ -417,7 +456,7 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_keyboard_parameter;
                                             1, 0, (VOID *)&hid_keyboard_parameter);
 
     if(status != UX_SUCCESS)
-        return;
+        return status;
 
     /* Create the main demo thread.  */
     status = ux_utility_thread_create(&ux_hid_thread, "hid_usbx_app_thread_entry",
@@ -425,10 +464,41 @@ UX_SLAVE_CLASS_HID_PARAMETER    hid_keyboard_parameter;
                                       UX_DEMO_THREAD_STACK_SIZE, 20, 20, 1, UX_AUTO_START);
 
     if(status != UX_SUCCESS)
-        return;
+        return status;
 
-    /* Register error callback */
+    /* Register error callback.  */
     ux_utility_error_callback_register(ux_demo_error_callback);
+
+    return status;
+}
+
+/********************************************************************/
+/**  ux_demo_device_hid_uninit                                      */
+/********************************************************************/
+UINT ux_demo_device_hid_uninit(VOID)
+{
+
+UINT    status;
+
+    /* Uninitialize USBX Memory.  */
+    status = ux_device_stack_uninitialize();
+
+    if(status != UX_SUCCESS)
+        return status;
+
+    /* Uninitialize the device hid class.  */
+    status = ux_device_stack_class_unregister(_ux_system_slave_class_hid_name, ux_device_class_hid_entry);
+
+    if(status != UX_SUCCESS)
+        return status;
+
+    /* Delete the main demo thread.  */
+    status = ux_utility_thread_delete(&ux_hid_thread);
+
+    if(status != UX_SUCCESS)
+        return status;
+
+    return status;
 }
 
 /********************************************************************/
@@ -492,82 +562,103 @@ UINT ux_demo_device_hid_get_callback(UX_SLAVE_CLASS_HID *hid_instance, UX_SLAVE_
 /********************************************************************/
 /**  ux_demo_device_hid_thread_entry: hid demo thread               */
 /********************************************************************/
-VOID ux_demo_device_hid_thread_entry(ULONG thread_input)
+static VOID ux_demo_device_hid_thread_entry(ULONG thread_input)
 {
-UCHAR           status;
-UCHAR           key;
-UX_SLAVE_CLASS_HID_EVENT device_hid_event;
 
     UX_PARAMETER_NOT_USED(thread_input);
 
-    /* Register the USB device controllers available in this system.  */
-    usb_device_dcd_initialize(UX_NULL);
+#ifndef EXTERNAL_DCD_INITIALIZE
 
-    /* Set the first key to 'a' which is 04.  */
-    key = 0x04;
+    /* Register the USB device controllers available in this system */
+    usb_device_dcd_initialize(UX_NULL);
+#else /* EXTERNAL_DCD_INITIALIZE */
+
+    /* Register the USB device simulator controllers for testing */
+    ux_dcd_sim_slave_initialize();
+#endif /* EXTERNAL_DCD_INITIALIZE */
+
+
+    while (1)
+    {
+        /* Check if the device state already configured.  */
+        if ((UX_SLAVE_DEVICE_CHECK_STATE(UX_DEVICE_CONFIGURED)) && (hid_keyboard != UX_NULL))
+        {
+            ux_demo_device_hid_keyboard_send_character(hid_keyboard);
+        }
+        else
+        {
+            /* Sleep thread for 10ms.  */
+            ux_utility_delay_ms(MS_TO_TICK(10));
+        }
+    }
+}
+
+/********************************************************************/
+/**  ux_demo_device_hid_keyboard_send_character:                    */
+/**        Send keyboard character                                  */
+/********************************************************************/
+UINT ux_demo_device_hid_keyboard_send_character(UX_SLAVE_CLASS_HID *device_hid)
+{
+
+UINT                        status;
+UX_SLAVE_CLASS_HID_EVENT    device_hid_event;
+static UCHAR                key = 4;
 
     /* Reset the HID event structure.  */
     ux_utility_memory_set(&device_hid_event, 0, sizeof(UX_SLAVE_CLASS_HID_EVENT));
 
-    while (1)
+    if (key != 0)
     {
-      /* Check if the device state already configured.  */
-      if ((UX_SLAVE_DEVICE_CHECK_STATE(UX_DEVICE_CONFIGURED)) && (hid_keyboard != UX_NULL))
-      {
-          if (key != 0)
-          {
-              /* Sleep thread for 20ms.  */
-              ux_utility_delay_ms(MS_TO_TICK(20));
+        /* Sleep thread for 20ms.  */
+        ux_utility_delay_ms(MS_TO_TICK(20));
 
-              /* Then insert a key into the keyboard event.  Length is fixed to 8.  */
-              device_hid_event.ux_device_class_hid_event_report_id = 0;
-              device_hid_event.ux_device_class_hid_event_report_type = UX_DEVICE_CLASS_HID_REPORT_TYPE_INPUT;
-              device_hid_event.ux_device_class_hid_event_length = 8;
-              device_hid_event.ux_device_class_hid_event_buffer[0] = 0;     /* 0x02: Left Shift modifier */
-              device_hid_event.ux_device_class_hid_event_buffer[1] = 0;
-              device_hid_event.ux_device_class_hid_event_buffer[2] = key;   /* key */
-              device_hid_event.ux_device_class_hid_event_buffer[3] = 0;
-              device_hid_event.ux_device_class_hid_event_buffer[4] = 0;
-              device_hid_event.ux_device_class_hid_event_buffer[5] = 0;
-              device_hid_event.ux_device_class_hid_event_buffer[6] = 0;
-              device_hid_event.ux_device_class_hid_event_buffer[7] = 0;
+        /* Then insert a key into the keyboard event.  Length is fixed to 8.  */
+        device_hid_event.ux_device_class_hid_event_report_id = 0;
+        device_hid_event.ux_device_class_hid_event_report_type = UX_DEVICE_CLASS_HID_REPORT_TYPE_INPUT;
+        device_hid_event.ux_device_class_hid_event_length = 8;
+        device_hid_event.ux_device_class_hid_event_buffer[0] = 0;     /* 0x02: Left Shift modifier */
+        device_hid_event.ux_device_class_hid_event_buffer[1] = 0;
+        device_hid_event.ux_device_class_hid_event_buffer[2] = key;   /* key */
+        device_hid_event.ux_device_class_hid_event_buffer[3] = 0;
+        device_hid_event.ux_device_class_hid_event_buffer[4] = 0;
+        device_hid_event.ux_device_class_hid_event_buffer[5] = 0;
+        device_hid_event.ux_device_class_hid_event_buffer[6] = 0;
+        device_hid_event.ux_device_class_hid_event_buffer[7] = 0;
 
-              /* Set the keyboard event.  */
-              status = ux_device_class_hid_event_set(hid_keyboard, &device_hid_event);
+        /* Set the keyboard event.  */
+        status = ux_device_class_hid_event_set(hid_keyboard, &device_hid_event);
 
-              if (status != UX_SUCCESS)
-                  return;
+        if (status != UX_SUCCESS)
+            return status;
 
-              /* Next event has the key depressed.  */
-              device_hid_event.ux_device_class_hid_event_buffer[2] = 0;     /* 0x28: ENTER key */
+        /* Next event has the key depressed.  */
+        device_hid_event.ux_device_class_hid_event_buffer[2] = 0;     /* 0x28: ENTER key */
 
-              /* Set the keyboard event.  */
-              status = ux_device_class_hid_event_set(hid_keyboard, &device_hid_event);
+        /* Set the keyboard event.  */
+        status = ux_device_class_hid_event_set(hid_keyboard, &device_hid_event);
 
-              if (status != UX_SUCCESS)
-                  return;
+        if (status != UX_SUCCESS)
+            return status;
 
-              /* Are we at the end of alphabet ?  */
-              if (key != (0x04 + 25))
-                  /* Next key.  */
-                  key++;
-              else
-                  key = 0;
-          }
-          else
-          {
-              /* Sleep thread for 10ms.  */
-              ux_utility_delay_ms(MS_TO_TICK(10));
-          }
-      }
-      else
-      {
-          /* Sleep thread for 10ms.  */
-          ux_utility_delay_ms(MS_TO_TICK(10));
-      }
+        /* Are we at the end of alphabet ?  */
+        if (key != (0x04 + 25))
+            /* Next key.  */
+            key++;
+        else
+            key = 0;
     }
+    else
+    {
+        /* Sleep thread for 10ms.  */
+        ux_utility_delay_ms(MS_TO_TICK(10));
+    }
+
+    return status;
 }
 
+/********************************************************************/
+/**  ux_demo_error_callback: error callback                         */
+/********************************************************************/
 static VOID ux_demo_error_callback(UINT system_level, UINT system_context, UINT error_code)
 {
     /*

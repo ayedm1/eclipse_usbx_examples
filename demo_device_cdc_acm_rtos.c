@@ -486,9 +486,9 @@ UX_SLAVE_CLASS_CDC_ACM_PARAMETER   cdc_acm_parameter;
         return;
 
     /* Initialize the cdc acm class parameters for the device */
-    cdc_acm_parameter.ux_slave_class_cdc_acm_instance_activate = ux_demo_device_cdc_acm_instance_activate;
+    cdc_acm_parameter.ux_slave_class_cdc_acm_instance_activate   = ux_demo_device_cdc_acm_instance_activate;
     cdc_acm_parameter.ux_slave_class_cdc_acm_instance_deactivate = ux_demo_device_cdc_acm_instance_deactivate;
-    cdc_acm_parameter.ux_slave_class_cdc_acm_parameter_change = ux_demo_device_cdc_acm_instance_parameter_chage;
+    cdc_acm_parameter.ux_slave_class_cdc_acm_parameter_change    = ux_demo_device_cdc_acm_instance_parameter_chage;
 
     /* Initialize the device cdc acm class. The class is connected with interface 0 on configuration 1. */
     status = ux_device_stack_class_register(_ux_system_slave_class_cdc_acm_name, ux_device_class_cdc_acm_entry,

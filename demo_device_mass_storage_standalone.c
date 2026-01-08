@@ -82,6 +82,8 @@ UINT ux_demo_device_storage_media_write(VOID *storage_instance, ULONG lun, UCHAR
                                         ULONG lba, ULONG *media_status);
 UINT ux_demo_device_storage_media_status(VOID *storage_instance, ULONG lun, ULONG media_id, ULONG *media_status);
 UINT ux_demo_device_storage_media_flush(VOID *storage, ULONG lun, ULONG number_blocks, ULONG lba, ULONG *media_status);
+UINT ux_demo_device_storage_media_notification(VOID *storage,  ULONG lun, ULONG media_id, ULONG notification_class,
+                                               UCHAR **media_notification, ULONG *media_notification_length);
 
 /**************************************************/
 /**  usbx device storage demo                     */
@@ -138,7 +140,7 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     UX_DEMO_MAX_EP0_SIZE,       /* bMaxPacketSize0 */
     UX_W0(UX_DEMO_STORAGE_DEVICE_VID), UX_W1(UX_DEMO_STORAGE_DEVICE_VID), /* idVendor */
     UX_W0(UX_DEMO_STORAGE_DEVICE_PID), UX_W1(UX_DEMO_STORAGE_DEVICE_PID), /* idProduct */
-    0x00, 0x00,                 /* bcdDevice */
+    UX_W0(0x200), UX_W1(0x200), /* bcdDevice */
     0x01,                       /* iManufacturer */
     0x02,                       /* iProduct */
     0x03,                       /* iSerialNumber */
@@ -154,7 +156,7 @@ UCHAR ux_demo_device_framework_full_speed[] = {
     0xC0,                       /* bmAttributes */
                                 /* D6 : 0x1 : Self-powered */
                                 /* D5, Remote Wakeup : 0x0 : Not supported */
-    0x32,                       /* bMaxPower : 50 : 100mA */
+    0x19,                       /* bMaxPower : 50mA */
 
     /* Interface descriptor */
     0x09,                       /* bLength */
@@ -206,7 +208,7 @@ UCHAR ux_demo_device_framework_high_speed[] = {
     UX_DEMO_MAX_EP0_SIZE,       /* bMaxPacketSize0 */
     UX_W0(UX_DEMO_STORAGE_DEVICE_VID), UX_W1(UX_DEMO_STORAGE_DEVICE_VID), /* idVendor */
     UX_W0(UX_DEMO_STORAGE_DEVICE_PID), UX_W1(UX_DEMO_STORAGE_DEVICE_PID), /* idProduct */
-    0x01, 0x00,                 /* bcdDevice */
+    UX_W0(0x200), UX_W1(0x200), /* bcdDevice */
     0x01,                       /* iManufacturer */
     0x02,                       /* iProduct */
     0x03,                       /* iSerialNumber */
@@ -233,7 +235,7 @@ UCHAR ux_demo_device_framework_high_speed[] = {
     0xC0,                       /* bmAttributes */
                                     /* D6 : 0x1 : Self-powered */
                                     /* D5, Remote Wakeup : 0x0 : Not supported */
-    0x19,                       /* bMaxPower : 50 : 100mA */
+    0x19,                       /* bMaxPower : 50mA */
 
     /* Interface descriptor */
     0x09,                       /* bLength */
@@ -407,8 +409,7 @@ VOID ux_application_define(VOID)
 {
 CHAR                               *memory_pointer;
 UINT                               status;
-UX_SLAVE_CLASS_STORAGE_PARAMETER   storage_parameter;
-UX_SLAVE_CLASS_STORAGE_LUN         *lun;
+UX_SLAVE_CLASS_STORAGE_PARAMETER   storage_parameter = {UX_NULL};
 
     /* Use static memory block.  */
     memory_pointer = ux_system_memory_pool;
@@ -433,18 +434,29 @@ UX_SLAVE_CLASS_STORAGE_LUN         *lun;
     storage_parameter.ux_slave_class_storage_instance_activate = ux_demo_device_storage_instance_activate;
     storage_parameter.ux_slave_class_storage_instance_deactivate = ux_demo_device_storage_instance_deactivate;
     storage_parameter.ux_slave_class_storage_parameter_number_lun = 1;
+    storage_parameter.ux_slave_class_storage_parameter_vendor_id = (UCHAR*) "Eclipse ";
+    storage_parameter.ux_slave_class_storage_parameter_product_id = (UCHAR*) "USBX storage";
+    storage_parameter.ux_slave_class_storage_parameter_product_rev = (UCHAR*) "2000";
+    storage_parameter.ux_slave_class_storage_parameter_product_serial = (UCHAR*) "001";
 
      /* Initialize the storage class parameters for reading/writing to the Flash Disk.  */
-    lun = &storage_parameter.ux_slave_class_storage_parameter_lun[0];
-    lun -> ux_slave_class_storage_media_last_lba = RAM_DISK_LAST_LBA;
-    lun -> ux_slave_class_storage_media_block_length = RAM_DISK_BLOCK_LENGTH;
-    lun -> ux_slave_class_storage_media_type = 0;
-    lun -> ux_slave_class_storage_media_removable_flag = 0x80;
-    lun -> ux_slave_class_storage_media_read_only_flag = UX_FALSE;
-    lun -> ux_slave_class_storage_media_read = ux_demo_device_storage_media_read;
-    lun -> ux_slave_class_storage_media_write = ux_demo_device_storage_media_write;
-    lun -> ux_slave_class_storage_media_status = ux_demo_device_storage_media_status;
-    lun -> ux_slave_class_storage_media_flush = RAM_DISK_WRITE_CACHING ? ux_demo_device_storage_media_flush : UX_NULL;
+
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_last_lba = RAM_DISK_LAST_LBA;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_block_length = RAM_DISK_BLOCK_LENGTH;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_type = 0;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_removable_flag = 0x80;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_read_only_flag = UX_FALSE;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_read =
+      ux_demo_device_storage_media_read;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_write =
+      ux_demo_device_storage_media_write;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_status =
+      ux_demo_device_storage_media_status;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_flush =
+      RAM_DISK_WRITE_CACHING ? ux_demo_device_storage_media_flush : UX_NULL;
+    storage_parameter.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_notification =
+      ux_demo_device_storage_media_notification;
+
 
     /* Initialize the device storage class. The class is connected with interface 0 on configuration 1. */
     status = ux_device_stack_class_register(_ux_system_slave_class_storage_name, _ux_device_class_storage_entry,
@@ -552,6 +564,23 @@ UINT ux_demo_device_storage_media_flush(VOID *storage, ULONG lun, ULONG number_b
 
     /* Time consuming operation returns state status.  */
     return(UX_STATE_NEXT);
+}
+
+/********************************************************************/
+/**  ux_demo_device_storage_media_notification                      */
+/********************************************************************/
+UINT ux_demo_device_storage_media_notification(VOID *storage,  ULONG lun, ULONG media_id, ULONG notification_class,
+                                               UCHAR **media_notification, ULONG *media_notification_length)
+{
+
+    UX_PARAMETER_NOT_USED(storage);
+    UX_PARAMETER_NOT_USED(lun);
+    UX_PARAMETER_NOT_USED(media_id);
+    UX_PARAMETER_NOT_USED(notification_class);
+    UX_PARAMETER_NOT_USED(media_notification);
+    UX_PARAMETER_NOT_USED(media_notification_length);
+
+    return(UX_SUCCESS);
 }
 
 /********************************************************************/

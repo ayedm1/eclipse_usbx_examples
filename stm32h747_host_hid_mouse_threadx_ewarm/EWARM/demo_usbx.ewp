@@ -231,8 +231,8 @@
                     <state>STM32H747xx</state>
                     <state>USE_PWR_DIRECT_SMPS_SUPPLY</state>
                     <state>EXTERNAL_MAIN</state>
-                    <state>DEMO_HID_MOUSE</state>
-                    <state>UX_INCLUDE_USER_DEFINE_FILE</state>
+                    <state>HID_MOUSE</state>
+                    <state>UX_DEVICE_SIDE_ONLY</state>
                 </option>
                 <option>
                     <name>CCPreprocFile</name>
@@ -359,15 +359,14 @@
                     <state>$PROJ_DIR$/../CM7/USBX/Target</state>
                     <state>$PROJ_DIR$\..\..\eclipse_usbx\ports\generic\inc</state>
                     <state>$PROJ_DIR$\..\..\eclipse_usbx\common\core\inc</state>
-                    <state>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\inc</state>
-                    <state>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers</state>
+                    <state>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\inc</state>
+                    <state>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers</state>
                     <state>$PROJ_DIR$\..\..\threadx\common\inc</state>
                     <state>$PROJ_DIR$\..\..\threadx\ports\cortex_m7\iar\inc</state>
                     <state>$PROJ_DIR$\..\..\Drivers\STM32H7xx_HAL_Driver\Inc</state>
                     <state>$PROJ_DIR$\..\..\Drivers\STM32H7xx_HAL_Driver\Inc\Legacy</state>
                     <state>$PROJ_DIR$\..\..\Drivers\CMSIS\Device\ST\STM32H7xx\Include</state>
                     <state>$PROJ_DIR$\..\..\Drivers\CMSIS\Include</state>
-                    <state>$PROJ_DIR$\..\..</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -1130,12 +1129,15 @@
                     </file>
                     <file>
                         <name>$PROJ_DIR$\..\CM7\Core\Src\usb_otg.c</name>
+                        <excluded>
+                            <configuration>demo_device_hid_mouse_rtos</configuration>
+                        </excluded>
                     </file>
                 </group>
                 <group>
                     <name>USBX</name>
                     <file>
-                        <name>$PROJ_DIR$\..\..\demo_device_hid_mouse_rtos.c</name>
+                        <name>$PROJ_DIR$\..\..\demo_host_hid_mouse_rtos.c</name>
                     </file>
                 </group>
             </group>
@@ -1174,6 +1176,9 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\..\..\..\Users\ayed\STM32Cube\Repository\STM32Cube_FW_H7_V1.12.1\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_gpio.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\..\..\Users\ayed\STM32Cube\Repository\STM32Cube_FW_H7_V1.12.1\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_hcd.c</name>
             </file>
             <file>
                 <name>$PROJ_DIR$\..\..\..\..\Users\ayed\STM32Cube\Repository\STM32Cube_FW_H7_V1.12.1\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_hsem.c</name>
@@ -1811,52 +1816,88 @@
             <group>
                 <name>controllers</name>
                 <file>
-                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers\ux_dcd_stm32.h</name>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32.h</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers\ux_dcd_stm32_callback.c</name>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_callback.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers\ux_dcd_stm32_endpoint_create.c</name>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_controller_disable.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers\ux_dcd_stm32_endpoint_destroy.c</name>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_ed_obtain.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers\ux_dcd_stm32_endpoint_reset.c</name>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_endpoint_create.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers\ux_dcd_stm32_endpoint_stall.c</name>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_endpoint_destroy.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers\ux_dcd_stm32_endpoint_status.c</name>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_endpoint_reset.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers\ux_dcd_stm32_frame_number_get.c</name>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_entry.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers\ux_dcd_stm32_function.c</name>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_frame_number_get.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers\ux_dcd_stm32_initialize.c</name>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_initialize.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers\ux_dcd_stm32_initialize_complete.c</name>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_interrupt_handler.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers\ux_dcd_stm32_interrupt_handler.c</name>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_least_traffic_list_get.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers\ux_dcd_stm32_transfer_abort.c</name>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_periodic_schedule.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers\ux_dcd_stm32_transfer_request.c</name>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_port_disable.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers\ux_dcd_stm32_transfer_run.c</name>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_port_enable.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_device_controllers\ux_dcd_stm32_uninitialize.c</name>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_port_reset.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_port_resume.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_port_status_get.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_port_suspend.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_power_down_port.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_power_on_port.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_request_bulk_transfer.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_request_control_transfer.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_request_periodic_transfer.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_request_trans_finish.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_request_trans_prepare.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_request_transfer.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\supported-platforms\stm32\usbx\usbx_stm32_host_controllers\ux_hcd_stm32_transfer_abort.c</name>
                 </file>
             </group>
             <group>
@@ -2523,72 +2564,162 @@
                 </file>
             </group>
             <group>
-                <name>device hid class</name>
+                <name>host hid class</name>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\inc\ux_device_class_hid.h</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_activate.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_activate.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_client_register.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_control_request.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_client_search.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_deactivate.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_configure.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_descriptor_send.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_deactivate.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_entry.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_descriptor_parse.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_event_get.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_entry.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_event_set.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_field_decompress.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_initialize.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_global_item_parse.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_interrupt_thread.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_idle_get.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_read.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_idle_set.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_read_run.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_idle_set_run.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_receiver_event_free.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_instance_clean.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_receiver_event_get.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_interrupt_endpoint_search.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_receiver_initialize.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_item_data_get.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_receiver_tasks_run.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_keyboard_activate.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_receiver_thread.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_keyboard_callback.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_receiver_uninitialize.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_keyboard_deactivate.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_report_get.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_keyboard_entry.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_report_set.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_keyboard_ioctl.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_tasks_run.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_keyboard_key_get.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_device_classes\src\ux_device_class_hid_uninitialize.c</name>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_keyboard_tasks_run.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_keyboard_thread.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_local_item_parse.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_main_item_parse.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_mouse_activate.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_mouse_buttons_get.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_mouse_callback.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_mouse_deactivate.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_mouse_entry.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_mouse_position_get.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_mouse_wheel_get.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_periodic_report_start.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_periodic_report_stop.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_remote_control_activate.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_remote_control_callback.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_remote_control_deactivate.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_remote_control_entry.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_remote_control_usage_get.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_report_add.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_report_callback_register.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_report_compress.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_report_decompress.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_report_descriptor_get.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_report_get.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_report_id_get.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_report_item_analyse.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_report_set.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_report_set_run.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_resources_free.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_tasks_run.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\eclipse_usbx\common\usbx_host_classes\src\ux_host_class_hid_transfer_request_completed.c</name>
                 </file>
             </group>
         </group>
